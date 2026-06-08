@@ -336,6 +336,115 @@ showHome();updateTop();
 })();
 /* ===== End Final QA Patch ===== */
 
+/* ===== Bedtime Final Polish Patch ===== */
+(function(){
+  const P = ()=>document.getElementById('layer');
+  if(!P()) return;
+  const css = document.createElement('style');
+  css.textContent = `
+  .panel{background:transparent!important;border:0!important;box-shadow:none!important;padding:6px!important;}
+  .mapGridMenu{display:grid!important;grid-template-columns:repeat(auto-fit, minmax(118px, 138px))!important;justify-content:center!important;gap:12px!important;align-content:start!important;}
+  .mapTile{width:128px!important;height:112px!important;min-height:112px!important;padding:8px!important;border-radius:22px!important;}
+  .mapTile .big{font-size:2.1rem!important;margin-bottom:4px!important;}
+  .levelOnly{grid-template-columns:1fr!important;}
+  .wingCards{display:grid;grid-template-columns:repeat(3, minmax(150px, 1fr));gap:18px;justify-items:center;align-items:center;height:100%;}
+  .wingCard{width:170px!important;height:150px!important;min-height:150px!important;display:flex!important;flex-direction:column!important;gap:8px!important;align-items:center!important;justify-content:center!important;text-align:center!important;}
+  .wingCard .big{font-size:2.8rem!important}.wingCard .sub{font-size:.9rem;line-height:1.15;font-weight:800}.roomCardDone,.completedPink{background:linear-gradient(180deg,#ffd7f2,#ff9edb)!important;border-color:#ff57c7!important;}
+  .shapeSVG{display:inline-block;vertical-align:middle}.shapeMain{width:128px;height:100px;margin:0 auto 6px}.shapeChoiceIcon{width:42px;height:34px;margin-right:8px}.shapeChoice{display:flex!important;flex-direction:row!important;gap:7px!important;align-items:center!important;justify-content:center!important}.shapeSceneCompact{height:230px!important;position:relative;border:4px solid #f2df75;border-radius:20px;background:rgba(245,255,255,.58);margin:6px 0 8px}.shapeObjSvg{position:absolute;transform:translate(-50%,-50%);border:0!important;background:transparent!important;box-shadow:none!important;padding:4px!important;width:76px;height:64px}.shapeObjSvg.selected{filter:drop-shadow(0 0 9px #ffd747);outline:5px solid #ffd747;border-radius:16px;background:rgba(255,255,255,.45)!important}.shapeObjSvg.wrongPick{animation:shake .35s}.shapeStatus{font-weight:900;font-size:1.1rem;min-height:1.3em;margin-top:2px}.choices.fixedChoices .choice{min-height:86px!important}.activity{overflow:hidden!important}.card{max-height:100%;overflow:hidden!important}.prompt{margin:5px auto 8px!important;padding:7px!important}.speakBtn{padding:4px 8px!important;font-size:.9rem!important}
+  .twoTens{display:flex!important;justify-content:center!important;gap:16px!important;align-items:center!important;margin:6px auto!important}.teenFrame{display:grid!important;grid-template-columns:repeat(5,43px)!important;grid-template-rows:repeat(2,43px)!important;gap:5px!important;padding:8px!important;border:5px solid #7c35c8;border-radius:16px;background:rgba(255,255,255,.7)}.teenCell{width:43px!important;height:43px!important;min-height:0!important;border-radius:10px!important;font-size:1.45rem!important;box-shadow:none!important;border:3px solid #a64de7!important}.teenCell.filled{background:#fff2a6!important}.teenControls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.teenHint{font-size:1.3rem;font-weight:900;margin:2px auto 4px}.soundLevelArea{height:292px!important;position:relative;border:4px solid #fff0a6;border-radius:22px;background:rgba(255,255,255,.24);overflow:hidden}.soundSparkOnly{position:absolute;width:70px;height:58px;border-radius:18px;background:rgba(255,255,255,.87);border:4px solid #ffd6f6;box-shadow:0 0 16px rgba(216,76,207,.65);font-size:1.6rem;font-weight:900}.soundSparkOnly:before{content:'✨'}.soundSparkOnly.used{visibility:hidden}.soundReveal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;background:#fffef2;border:5px solid #b86bee;border-radius:24px;box-shadow:0 8px 0 #7c35c8;padding:12px 18px;text-align:center;min-width:155px}.soundReveal .pic{height:auto!important;border:0!important;background:none!important;font-size:3rem}.soundWord{font-size:1.7rem;font-weight:900}.soundChestRow{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;gap:10px!important;margin-top:8px}.soundChest{min-height:82px!important;font-size:1.55rem!important}.soundChest .chestLabel{font-size:1.45rem}.soundHint{font-size:1.05rem;font-weight:900;margin-top:5px}.phoneCard{max-height:100%!important}.mapGridMenu + *{display:none!important}
+  @media(max-height:760px){.shapeSceneCompact{height:205px!important}.soundLevelArea{height:260px!important}.wingCard{height:130px!important;min-height:130px!important}.mapTile{height:102px!important;min-height:102px!important}.teenFrame{grid-template-columns:repeat(5,38px)!important;grid-template-rows:repeat(2,38px)!important}.teenCell{width:38px!important;height:38px!important}.shapeMain{width:108px;height:82px}.shapeObjSvg{width:65px;height:56px}.choice{min-height:76px!important}}
+  `;
+  document.head.appendChild(css);
+
+  // One obvious home button: top-left castle icon only. Wing pages have no extra Castle button and no white panel.
+  window.showHome = function(){
+    ensurePatchState && ensurePatchState();
+    bg('home');
+    P().innerHTML = `<div class="homePanel"><div class="welcome">Choose a wing</div><div class="wingCards">
+      <button class="door wingCard" onclick="showWing('reading')"><span class="big">📚</span><b>Reading Wing</b><span class="sub">Words, sounds, and stories</span></button>
+      <button class="door wingCard" onclick="showWing('math')"><span class="big">🔢</span><b>Math Kingdom</b><span class="sub">Numbers, shapes, and patterns</span></button>
+      <button class="door wingCard" onclick="showWing('adventure')"><span class="big">🌎</span><b>Adventure Wing</b><span class="sub">Maps, clocks, and life skills</span></button>
+    </div></div>`;
+  };
+  const roomDone = (room)=>{ try { return typeof isRoomDone==='function' && isRoomDone(room); } catch(e){ return false; } };
+  const btn = (room,icon,label,action)=>`<button class="btn mapTile ${roomDone(room)?'roomCardDone':''}" onclick="${action||`showLevels('${room}')`}"><span class="big">${icon}</span><span>${label}</span>${roomDone(room)?'<span>✅</span>':''}</button>`;
+  window.showWing=function(kind){
+    ensurePatchState && ensurePatchState();
+    bg(kind==='reading'?'reading':kind==='math'?'bakery':'clock');
+    let title=kind==='reading'?'📚 Reading Wing':kind==='math'?'🔢 Math Kingdom':'🌎 Adventure Wing';
+    let buttons='';
+    if(kind==='reading') buttons=[btn('sight','👑','Sight Word Ballroom',`showLevels('sight')`),btn('reading','📚','Reading Adventure'),btn('rhyme','💎','Rhyming Treasure'),btn('sound','✨','Sound Sort Forest'),btn('word','🔤','Spelling Tower')].join('');
+    else if(kind==='math') buttons=[btn('bakery','🧁','Royal Bakery','startBakery()'),btn('pattern','🌷','Pattern Garden'),btn('compare','🐊','Alligator Lagoon'),btn('count','🪙','Dragon Count'),btn('teen','🔟','Teen Builder'),btn('shape','🔷','Shape Castle')].join('');
+    else buttons=[btn('clock','🕰️','Clock Tower'),btn('messenger','📜','Messenger Academy'),btn('map','🗺️','Treasure Map')].join('');
+    P().innerHTML=`<div class="bar levelOnly"><div class="barTitle">${title}</div></div><div class="mapGridMenu">${buttons}</div>`;
+  };
+
+  // Drawn SVG shapes, varied colors, fixed answer order for shape activities.
+  const shapeOrder=['circle','square','triangle','rectangle','oval','pentagon','hexagon','rhombus','trapezoid'];
+  const shapeColors=['#e94b5f','#2f80ed','#27ae60','#f2c94c','#9b51e0','#f2994a','#56ccf2','#ff7ac8'];
+  window._shapeColorIdx=0;
+  function colorFor(shape,q=0){ window._shapeColorIdx=(window._shapeColorIdx||0)+1; return shapeColors[(window._shapeColorIdx+q+shapeOrder.indexOf(shape)+2)%shapeColors.length]; }
+  window.svgShape=function(shape,color){
+    color=color||colorFor(shape,0); const st='stroke="#2d1b3d" stroke-width="5"';
+    let inner='';
+    if(shape==='circle') inner=`<circle cx="50" cy="50" r="34" fill="${color}" ${st}/>`;
+    if(shape==='square') inner=`<rect x="18" y="18" width="64" height="64" fill="${color}" ${st}/>`;
+    if(shape==='triangle') inner=`<polygon points="50,12 88,84 12,84" fill="${color}" ${st}/>`;
+    if(shape==='rectangle') inner=`<rect x="12" y="28" width="76" height="44" fill="${color}" ${st}/>`;
+    if(shape==='oval') inner=`<ellipse cx="50" cy="50" rx="40" ry="26" fill="${color}" ${st}/>`;
+    if(shape==='pentagon') inner=`<polygon points="50,10 88,38 74,86 26,86 12,38" fill="${color}" ${st}/>`;
+    if(shape==='hexagon') inner=`<polygon points="28,14 72,14 92,50 72,86 28,86 8,50" fill="${color}" ${st}/>`;
+    if(shape==='rhombus') inner=`<polygon points="50,8 88,50 50,92 12,50" fill="${color}" ${st}/>`;
+    if(shape==='trapezoid') inner=`<polygon points="28,24 72,24 90,78 10,78" fill="${color}" ${st}/>`;
+    return `<span class="shapeSVG"><svg viewBox="0 0 100 100" aria-label="${shape}">${inner}</svg></span>`;
+  };
+  const choiceIcon=(s)=>`<span class="shapeChoiceIcon shapeSVG"><svg viewBox="0 0 100 100">${svgShape(s,'#ffffff').match(/<svg[^>]*>([\s\S]*)<\/svg>/)[1].replace('fill="#ffffff"','fill="#fff8dc"')}</svg></span>`;
+  const fixedChoices=(set)=>shapeOrder.filter(x=>set.includes(x));
+  const shapeGroups2=[['circle','square','triangle'],['rectangle','oval'],['pentagon','hexagon'],['rhombus','trapezoid'],shapeOrder];
+  window.showShapeMatchLevels=function(){ensurePatchState&&ensurePatchState();let unlocked=state.unlocked.shape||1;P().innerHTML=`<div class="bar"><button class="btn" onclick="showShapeHub()">⬅️ Shapes</button><div class="barTitle">🔷 Shape Match</div><div></div></div><div class="levels">${shapeGroups2.map((g,i)=>{let locked=i>=unlocked,done=state.completed?.shape?.[i];return `<button class="levelCard ${locked?'locked':''} ${done?'completedPink':''}" onclick="${locked?`speak('Complete the level before this one first.')`:`startShapeMatch(${i},0)`}"><div style="font-size:2rem">${done?'✅':locked?'🔒':'🔷'}</div><b>${i===4?'Bonus':'Level '+(i+1)}</b><div>${i===0?'Circle, Square, Triangle':i===1?'Rectangle, Oval':i===2?'Pentagon, Hexagon':i===3?'Rhombus, Trapezoid':'Mixed Review'}</div></button>`}).join('')}</div>`};
+  window.startShapeMatch=function(l=0,q=0){
+    let g=shapeGroups2[l]||shapeGroups2[0]; let pool=state._shapePool||{}; let key='newShape'+l;
+    if(!pool[key]||!pool[key].length) pool[key]=shuffle(Array.from({length:8},(_,i)=>g[i%g.length])); state._shapePool=pool;
+    let target=pool[key].pop(); let choices=fixedChoices(g.length>=3?g:[...g,...['circle','square','triangle','rectangle','oval'].filter(x=>!g.includes(x)).slice(0,3-g.length)]);
+    let col=colorFor(target,q);
+    P().innerHTML=bar('shape','🔷 Shape Match',`${q+1}/8`)+`<div class="activity"><div class="card"><div class="shapeMain">${svgShape(target,col)}</div>${promptHTML('What shape is this?')}<div class="choices fixedChoices">${choices.map(c=>`<button class="choice shapeChoice" onclick="speak('${c}');${c===target?`setTimeout(()=>nextShapeMatch(${l},${q}),250)`:`this.classList.add('shake')`}">${choiceIcon(c)}<span>${c}</span></button>`).join('')}</div><div class="msg" id="shapeMsg"></div></div></div>`;
+  };
+  const shapeHuntTargets=['circle','square','triangle','rectangle'];
+  window.startShapeHunt=function(q=0){
+    let target=shapeHuntTargets[q%shapeHuntTargets.length]; let other=shapeHuntTargets.filter(x=>x!==target); let objs=shuffle([target,target,target,...other,...other]).slice(0,8);
+    P().innerHTML=bar('shape','🔎 Shape Hunt',`${q+1}/8`)+`<div class="activity"><div class="card">${promptHTML(`Find all the ${target}s.`)}<div class="shapeSceneCompact">${objs.map((o,i)=>`<button class="shapeObjSvg" data-shape="${o}" style="left:${17+(i%4)*22}%;top:${28+Math.floor(i/4)*45}%" onclick="this.classList.toggle('selected');updateShapeFound('${target}')">${svgShape(o,colorFor(o,i))}</button>`).join('')}</div><div class="shapeStatus" id="foundStatus">Found 0 of ${objs.filter(x=>x===target).length}</div><button class="btn" onclick="checkShapeHunt('${target}',${q})">✅ Check</button><div class="msg" id="shapeMsg"></div></div></div>`;
+  };
+  window.updateShapeFound=function(target){let picked=$$('.shapeObjSvg.selected[data-shape="'+target+'"]').length,total=$$('.shapeObjSvg[data-shape="'+target+'"]').length;let el=$('foundStatus'); if(el) el.textContent=`Found ${picked} of ${total}`;};
+  window.checkShapeHunt=function(target,q=0){let all=$$('.shapeObjSvg');let ok=all.every(b=>(b.dataset.shape===target)===b.classList.contains('selected'));if(ok){addCoin(); if(q>=7){addGem();levelCompleteModal('shape',3,`startShapeHunt(0)`)} else startShapeHunt(q+1)} else {all.forEach(b=>{if(b.classList.contains('selected')&&b.dataset.shape!==target)b.classList.add('wrongPick')}); $('shapeMsg').textContent='Try again.';}};
+  window.startShapeAttr=function(l=0,q=0){
+    let qs=[['Which shape has 3 sides?','triangle',['circle','square','triangle']],['Which shape has no corners?','circle',['circle','square','triangle']],['Which shape has 4 equal sides?','square',['circle','square','triangle']],['Which shape is like an egg?','oval',['circle','oval','rectangle']],['Which shape has 6 sides?','hexagon',['pentagon','hexagon','triangle']],['Which shape looks like a diamond?','rhombus',['rhombus','rectangle','trapezoid']],['Which shape has 5 sides?','pentagon',['pentagon','hexagon','rectangle']],['Which shape has one short top and one long bottom?','trapezoid',['rectangle','rhombus','trapezoid']]];
+    let item=qs[q%qs.length], choices=fixedChoices(item[2]);
+    P().innerHTML=bar('shape','❓ Shape Attributes',`${q+1}/8`)+`<div class="activity"><div class="card">${promptHTML(item[0])}<div class="choices fixedChoices">${choices.map(c=>`<button class="choice shapeChoice" onclick="speak('${c}');${c===item[1]?`setTimeout(()=>nextShapeAttr(${q}),250)`:`this.classList.add('shake')`}">${choiceIcon(c)}<span>${c}</span></button>`).join('')}</div></div></div>`;
+  };
+
+  // Teen Builder: restore Make a Ten on Level 1, free placement, tap to erase.
+  window.startTeen=function(i){bg('home');teen={i,q:0,target:11+Math.floor(Math.random()*9),filled:new Set(),tens:0,ones:0,recent:[]};renderTeen();};
+  function nextTeenTarget(){let choices=Array.from({length:9},(_,k)=>k+11).filter(n=>!(teen.recent||[]).includes(n));let n=shuffle(choices)[0]||11+Math.floor(Math.random()*9);teen.recent=[...(teen.recent||[]),n].slice(-4);return n;}
+  window.tensFramesHTML=function(editable){let cells=Array.from({length:20},(_,i)=>teen.filled&&teen.filled.has(i));return `<div class="twoTens"><div class="teenFrame">${cells.slice(0,10).map((f,i)=>`<button class="teenCell ${f?'filled':''}" ${editable?`onclick="toggleTeenCell(${i})"`:''}>${f?'🪙':''}</button>`).join('')}</div><div class="teenFrame">${cells.slice(10).map((f,i)=>`<button class="teenCell ${f?'filled':''}" ${editable?`onclick="toggleTeenCell(${i+10})"`:''}>${f?'🪙':''}</button>`).join('')}</div></div>`;};
+  window.toggleTeenCell=function(i){teen.filled=teen.filled||new Set(); teen.filled.has(i)?teen.filled.delete(i):teen.filled.add(i); renderTeen();};
+  window.makeTen=function(){teen.filled=teen.filled||new Set(); for(let i=0;i<10;i++)teen.filled.add(i); renderTeen();};
+  window.checkTeenBuild=function(){if((teen.filled?.size||0)===teen.target)nextTeen();else $('teenMsg').textContent='Try again.';};
+  window.nextTeen=function(){addCoin();teen.q++;if(teen.q>=8){addGem();levelCompleteModal('teen',teen.i,`startTeen(${teen.i})`)}else{teen.target=nextTeenTarget();teen.filled=new Set();teen.tens=0;teen.ones=0;renderTeen();}};
+  const oldRenderTeen=window.renderTeen;
+  window.renderTeen=function(){let i=teen.i,t=teen.target;if(i===0||i===1){P().innerHTML=bar('teen',`🔟 ${levels.teen[i][0]}`,`${teen.q+1}/8`)+`<div class="activity"><div class="card">${promptHTML(`Build ${t}`)}<div class="teenHint">${t}=10+${t-10}</div>${tensFramesHTML(true)}<div class="teenControls"><button class="btn" onclick="makeTen()">✨ Make a Ten</button><button class="btn" onclick="checkTeenBuild()">✅ Check</button></div><div class="msg" id="teenMsg"></div></div></div>`}else{oldRenderTeen&&oldRenderTeen();}};
+
+  // Sound Sort: no chest audio, sparkle reveal, chest style, no worksheet look.
+  const soundPicMap={bat:'🦇',ball:'🏀',bed:'🛏️',bug:'🐞',man:'👨',mat:'▭',mop:'🧹',mud:'🟫',sun:'☀️',sit:'🪑',sad:'😢',sip:'🥤',top:'🔝',tap:'🚰',ten:'🔟',tub:'🛁',cat:'🐱',cup:'☕',cap:'🧢',cot:'🛏️',pig:'🐷',pan:'🍳',pot:'🥘',pen:'🖊️',dog:'🐶',dig:'⛏️',dad:'👨',dot:'•',fan:'🪭',fig:'🟣',fox:'🦊',fun:'🎉',gum:'🍬',gap:'↔️',goat:'🐐',gas:'⛽',hat:'🎩',hen:'🐔',hop:'🐇',hug:'🤗',log:'🪵',lip:'👄',leg:'🦵',lap:'🪑',rat:'🐀',run:'🏃',rug:'▭',red:'🔴',ship:'🚢',shop:'🏪',shell:'🐚',shut:'🚪',chat:'💬',chip:'🍟',chop:'🔪',chin:'🙂',thin:'📏',that:'👉',this:'👈',them:'👥',when:'❓',whip:'🥄',duck:'🦆',sock:'🧦',lock:'🔒',back:'🔙',star:'⭐',stem:'🌱',step:'🪜',stop:'🛑',spin:'🌀',spot:'⚫',sled:'🛷',slam:'🚪',slip:'🧦',slug:'🐌',tree:'🌳',trip:'🧳',trap:'🪤',drum:'🥁',drop:'💧',drag:'🐉',ring:'💍',sing:'🎵',wing:'🪽',king:'🤴',pink:'🩷',sink:'🚰',bank:'🏦',wink:'😉',rain:'🌧️',mail:'✉️',tail:'🐕',pail:'🪣',day:'☀️',play:'🎲',say:'💬',tray:'🍽️',see:'👀',bee:'🐝',feet:'🦶',eat:'🍽️',leaf:'🍃',team:'👥',seat:'🪑',boat:'⛵',coat:'🧥',road:'🛣️',snow:'❄️',grow:'🌱',bowl:'🥣',row:'🚣',light:'💡',night:'🌙',high:'⬆️',pie:'🥧',tie:'👔'};
+  window.startSound=function(i){bg('rhyme');let data=soundLevels[i];snd={i,targets:data[1],words:shuffle(data[2]).slice(0,8),done:0,active:null,used:{}};renderSound();};
+  window.renderSound=function(){let data=soundLevels[snd.i],early=snd.i<17;P().innerHTML=bar('sound',`✨ ${data[0]}`,`${snd.done}/8`)+`<div class="activity"><div class="card"><div class="soundLevelArea">${snd.words.map((w,i)=>snd.used[i]?'':`<button class="soundSparkOnly" onclick="showSoundCard(${i})" style="left:${18+(i%4)*22}%;top:${25+Math.floor(i/4)*42}%"></button>`).join('')}${snd.active!==null?soundCardHTML(snd.active,early):''}</div><div class="soundChestRow">${snd.targets.map(t=>`<button class="chest soundChest" onclick="trySoundChest('${t}')"><span class="chestLabel">${t}</span></button>`).join('')}</div><div class="soundHint">Tap a sparkle. Then tap the matching sound chest.</div><div class="msg" id="soundMsg"></div></div></div>`;};
+  window.soundCardHTML=function(i,early){let w=snd.words[i];return `<div class="soundReveal"><div class="pic">${early?(soundPicMap[w]||'✨'):''}</div><div class="soundWord">${w}</div><button class="btn readBtn" onclick="event.stopPropagation();speak('${w}')">🔊 Say Word</button></div>`;};
+  window.showSoundCard=function(i){snd.active=i; speak(snd.words[i]); renderSound();};
+  window.trySoundChest=function(t){if(snd.active===null){$('soundMsg').textContent='Tap a sparkle first.';return;}let w=snd.words[snd.active];let ok=(t.length===1?w.toLowerCase().startsWith(t.toLowerCase()): (w.toLowerCase().startsWith(t.toLowerCase())||w.toLowerCase().endsWith(t.toLowerCase()))); if(ok){snd.used[snd.active]=true;snd.done++;snd.active=null;addCoin(); if(snd.done>=8){addGem();markLevelDone('sound',snd.i);levelCompleteModal('sound',snd.i,`startSound(${snd.i})`)} else renderSound();} else {let m=$('soundMsg'); if(m)m.textContent='Try another chest.';}};
+
+  updateTop&&updateTop(); showHome();
+})();
+/* ===== End Bedtime Final Polish Patch ===== */
+
 </script>
 </body>
 </html>
