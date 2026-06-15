@@ -1410,6 +1410,148 @@ showHome();updateTop();
   setTimeout(refresh,120);
 })();
 /* ===== End consolidated feedback fixes ===== */
+
+/* ===== EMERGENCY FULL QA PATCH: repair broken game renderers and navigation ===== */
+(function(){
+  const $ = window.$ || (id=>document.getElementById(id));
+  const $$ = window.$$ || (sel=>Array.from(document.querySelectorAll(sel)));
+  const P = window.P || (()=>$('layer'));
+  const esc = s => String(s ?? '').replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+  const js = s => String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
+  const shuf = arr => (window.shuffle ? shuffle(arr.slice()) : arr.slice().sort(()=>Math.random()-.5));
+  function bgSafe(name){ try{ bg(name); }catch(e){} }
+  function safeSpeak(txt){ try{ speak(String(txt).replace(/[☀️❄️🌸🍂👙🧥🧤🎃⛄🌷]/g,'').replace(/\s+/g,' ').trim()); }catch(e){} }
+  function gameWing(room){
+    if(['sight','reading','rhyme','sound','word'].includes(room)) return 'reading';
+    if(['bakery','pattern','compare','count','teen','shape'].includes(room)) return 'math';
+    return 'adventure';
+  }
+  function levelAction(room){ if(room==='shape') return 'showShapeHub()'; if(room==='bakery') return 'startBakery()'; return `showLevels('${room}')`; }
+  window.bar=function(room,title,progress=''){
+    return `<div class="bar"><button class="btn wingBack" onclick="${levelAction(room)}">⬅️ Levels</button><div class="barTitle">${title}</div><div class="progressPill">${progress||''}</div></div>`;
+  };
+  window.levelCompleteModal=function(room,i,playAgainFn){
+    try{ if(typeof markLevelDone==='function' && room!=='shape') markLevelDone(room,i); }catch(e){}
+    try{ if(room!=='shape' && state && state.unlocked) { state.unlocked[room]=Math.max(state.unlocked[room]||1,i+2); save&&save(); } }catch(e){}
+    let hasNext=false,nextAction='',backAction=levelAction(room),backLabel='Levels';
+    if(room==='shape'){
+      try{ if(state?.completed?.shape) state.completed.shape[i]=true; if(state?.unlocked) state.unlocked.shape=Math.max(state.unlocked.shape||1,i+2); save&&save(); }catch(e){}
+      const nexts=[`startShapeHunt(0)`,`startShapeAttr(0,0)`,`startShapeMixed()`];
+      hasNext=i<2; nextAction=nexts[i]||'showShapeHub()'; backAction='showShapeHub()'; backLabel='Shape Castle';
+    } else {
+      const arr=(typeof levels!=='undefined' && levels[room])?levels[room]:[]; const n=i+1;
+      hasNext = n < arr.length && !/mixed|bonus/i.test(String(arr[n]?.[0]||''));
+      nextAction = `startLevel('${room}',${n})`;
+    }
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>⭐ Great Job! ⭐</h2><div class="prompt">You earned 💎 +1</div><button class="btn" onclick="this.closest('.modal').remove();${playAgainFn}">🔄 Play Again</button>${hasNext?`<button class="btn" onclick="this.closest('.modal').remove();${nextAction}">➡️ Next Level</button>`:`<button class="btn" onclick="this.closest('.modal').remove();${backAction}">⬅️ Back to ${backLabel}</button>`}</div></div>`);
+  };
+  window.complete=function(room,i){ try{addGem&&addGem();}catch(e){} levelCompleteModal(room,i,`startLevel('${room}',${i})`); };
+
+  if(!document.getElementById('qaPatchStyles')) document.head.insertAdjacentHTML('beforeend',`<style id="qaPatchStyles">
+    .mapGridMenu{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important;gap:22px!important;align-items:center!important;justify-items:center!important;max-width:min(820px,94vw)!important;margin:0 auto!important;}
+    .mapTile{width:150px!important;height:150px!important;min-width:150px!important;min-height:150px!important;white-space:normal!important;overflow:hidden!important;}
+    @media (max-width:760px){.mapGridMenu{grid-template-columns:repeat(2,minmax(130px,1fr))!important;gap:16px!important}.mapTile{width:132px!important;height:132px!important;min-width:132px!important;min-height:132px!important;font-size:.9rem!important}}
+    .activity,.qaActivity{height:calc(100vh - 132px);max-height:calc(100vh - 132px);overflow:hidden;background-size:cover;background-position:center;border-radius:24px;}
+    .qaCard{background:rgba(255,255,255,.68);border:5px solid #d69cff;border-radius:28px;padding:18px;margin:18px auto;max-width:min(860px,92vw);text-align:center;box-shadow:0 8px 0 #7b20c9;color:#3d1c56;}
+    .numberLine{display:flex;justify-content:center;gap:4px;flex-wrap:nowrap;width:100%;overflow:hidden}.nlNum{min-width:30px;height:30px;border-radius:50%;font-weight:900}.nlNum.hit{background:#ffe25b!important}.compareNums{font-size:clamp(38px,7vw,72px);font-weight:900;margin:8px}.gatorChoices{display:flex;justify-content:center;gap:28px}.gatorCard{width:230px;height:120px;overflow:hidden;display:flex!important;align-items:center;justify-content:center}.gatorCard img,.gatorCard svg{max-width:88%!important;max-height:88%!important;object-fit:contain!important;display:block!important;}
+    .soundPlay{position:relative;height:calc(100vh - 135px);background-size:cover;background-position:center;border:5px solid #f1df70;border-radius:24px;overflow:hidden}.soundSparkCircle{position:absolute;width:56px;height:56px;border-radius:50%;border:5px solid #f8c5ff;background:radial-gradient(circle,#fff 0%,#fff8d8 55%,#ffd6ff 100%);box-shadow:0 0 18px #ffbaff;z-index:3}.soundSparkCircle::after{content:'✨';font-size:24px}.soundWordCard{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);z-index:5;background:#fffbe8;border:5px solid #b844df;border-radius:22px;padding:14px 24px;font-size:28px;font-weight:900;box-shadow:0 8px 0 #7b20c9}.soundDock{position:absolute;left:0;right:0;bottom:0;padding:8px 12px;background:rgba(255,255,255,.35);z-index:4}.soundChestRow{display:flex;justify-content:center;gap:12px}.soundChest{min-width:150px;height:78px}.soundHint{font-weight:900;color:#3d1c56;text-shadow:0 1px #fff}.soundChestLabel{font-size:28px;font-weight:900}
+    .coinArea{position:relative;height:250px;border:3px solid #ead95d;border-radius:20px;margin:8px auto;max-width:720px}.coinObj,.coinGroup{position:absolute;border:0;background:transparent;font-size:32px}.answerStrip,.nums,.numPadRow{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.num{min-width:56px;height:48px;border-radius:18px;font-weight:900}.baseTenPic{display:flex;align-items:flex-end;justify-content:center;gap:10px;min-height:115px}.tenRod{width:32px;height:112px;background:#37bce6;border:3px solid #224b5a;border-radius:4px;display:grid;grid-template-rows:repeat(10,1fr);overflow:hidden}.tenRod span{border-bottom:1px solid #224b5a}.oneCubes{display:flex;flex-wrap:wrap;gap:6px;max-width:120px}.oneCube{width:26px;height:26px;background:#37bce6;border:3px solid #224b5a;border-radius:4px}.teenChoice{min-width:170px;min-height:155px}.teenFrame .teenCell.prefilled{background:#ffe36b!important}.teenFrame .teenCell.studentFilled{background:#bff2ff!important}.bakeryCard{padding:12px!important;transform:scale(.92);transform-origin:top center;margin-top:0!important}.bakeryCard .cust{font-size:clamp(20px,3.6vw,32px)!important}.bakeryCard .ten{gap:8px!important}.bakeryCard .cell{width:clamp(48px,8vw,70px)!important;height:clamp(48px,8vw,70px)!important}.bakeryCard .numPadRow{margin-top:4px}.bakeryCard .nums{max-width:720px}.patternChoicePair{font-size:2rem!important;min-height:90px}.phoneCard .messengerLine:nth-of-type(3){display:none!important}
+  </style>`);
+
+  function wingTile(room,icon,label,action){return `<button class="btn mapTile ${roomDoneSafe(room)?'roomCardDone completedPink':''}" onclick="${action||`showLevels('${room}')`}"><span class="big">${icon}</span><span>${label}</span>${roomDoneSafe(room)?'<span>✅</span>':''}</button>`;}
+  function roomDoneSafe(room){try{return typeof isRoomDone==='function' && isRoomDone(room)}catch(e){return false}}
+  window.showWing=function(kind){
+    bgSafe(kind==='reading'?'reading':kind==='math'?'bakery':'clock');
+    let title=kind==='reading'?'📚 Reading Wing':kind==='math'?'🔢 Math Kingdom':'🌎 Adventure Wing';
+    let buttons='';
+    if(kind==='reading') buttons=[wingTile('sight','👑','Sight Word Ballroom',`showLevels('sight')`),wingTile('reading','📚','Reading Adventure'),wingTile('rhyme','💎','Rhyming Treasure'),wingTile('sound','✨','Sound Sort Forest'),wingTile('word','🔤','Spelling Tower')].join('');
+    else if(kind==='math') buttons=[wingTile('bakery','🧁','Royal Bakery','startBakery()'),wingTile('pattern','🌷','Pattern Garden'),wingTile('compare','🐊','Alligator Lagoon'),wingTile('count','🪙','Dragon Count'),wingTile('teen','🔟','Teen Builder'),wingTile('shape','🔷','Shape Castle')].join('');
+    else buttons=[wingTile('clock','🕰️','Clock Tower'),wingTile('messenger','📞','Messenger'),wingTile('map','🗺️','Arrow Path')].join('');
+    P().innerHTML=`<div class="bar levelOnly"><div class="barTitle">${title}</div></div><div class="panel cleanPanel"><div class="mapGridMenu">${buttons}</div></div>`;
+    try{updateTop&&updateTop()}catch(e){}
+  };
+  window.showLevels=function(room){
+    if(room==='sight') return showBallroomHome();
+    if(room==='bakery') return startBakery();
+    if(room==='shape') return showShapeHub();
+    const rr=(typeof rooms!=='undefined' && rooms.find(r=>r[0]===room)) || ['', '⭐', room];
+    bgSafe(room==='sound'?'rhyme':(typeof bgs!=='undefined'&&bgs[room]?room:'home'));
+    const arr=(typeof levels!=='undefined'&&levels[room])?levels[room]:[];
+    P().innerHTML=`<div class="bar"><button class="btn wingBack" onclick="showWing('${gameWing(room)}')">⬅️ ${gameWing(room)==='math'?'Math':gameWing(room)==='reading'?'Reading':'Adventure'}</button><div class="barTitle">${rr[1]} ${rr[2]}</div><div></div></div><div class="panel cleanPanel"><div class="levels">${arr.map((l,i)=>{let unlocked=(state?.unlocked?.[room]||1);let locked=i>=unlocked;let done=!!state?.completed?.[room]?.[i];return `<button class="levelCard ${locked?'locked':''} ${done?'completedPink':''}" ${locked?'disabled':''} onclick="startLevel('${room}',${i})"><div style="font-size:2rem">${done?'✅':locked?'🔒':rr[1]}</div><b>${/mixed|bonus/i.test(String(l[0]))?'Bonus':'Level '+(i+1)}</b><div>${esc(l[0])}</div></button>`}).join('')}</div></div>`;
+  };
+  window.startLevel=function(room,i){
+    if(room==='clock') return startClock(i); if(room==='reading') return startReading(i); if(room==='rhyme') return startRhyme(i); if(room==='word') return startWord(i); if(room==='pattern') return startPattern(i); if(room==='compare') return startCompare(i); if(room==='sound') return startSound(i); if(room==='count') return startCount(i); if(room==='teen') return startTeen(i); if(room==='map') return startMap(i); if(room==='messenger') return startMessenger(i);
+  };
+
+  // Patterns: valid answer choices with both pattern icons represented where possible.
+  function makeBetterPat(type){
+    const sets=[['💎','🌻','🌷'],['🌷','🦋','🍄'],['🌼','🐞','💎'],['🍄','🌻','🦋']];
+    return Array.from({length:5},(_,idx)=>{let [A,B,C]=sets[idx%sets.length];let unit=type==='AB'?[A,B]:type==='ABB'?[A,B,B]:type==='AAB'?[A,A,B]:[A,B,C];let len=type==='ABC'?6:5;let full=[];while(full.length<len) full.push(...unit);full=full.slice(0,len);let seq=full.slice(0,-1),ans=full[len-1];let wrongs=[A,B,C,'💎','🌻','🌷','🦋','🍄','🐞'].filter(x=>x!==ans);let choices=shuf([ans,...shuf(wrongs).slice(0,2)]);return {seq,ans,choices};});
+  }
+  window.startPattern=function(i){bgSafe('pattern'); window.pat={i,q:0,qs:makeBetterPat((levels.pattern[i]&&levels.pattern[i][1])||'AB')}; renderPat();};
+  window.renderPat=function(){let q=pat.qs[pat.q];P().innerHTML=bar('pattern',`🌷 ${levels.pattern[pat.i][0]}`,`${pat.q+1}/${pat.qs.length}`)+`<div class="qaActivity" style="background-image:url(${asset('pattern.jpg')})"><div class="qaCard"><h2>Fix the flower bed.</h2><div class="patternLine">${q.seq.map(x=>`<span>${x}</span>`).join('')}<span class="blank">?</span></div><div class="choices">${q.choices.map((c,i)=>`<button id="pt${i}" class="choice patternChoicePair" onclick="choosePat('${js(c)}',${i})">${c}</button>`).join('')}</div><div class="msg" id="ptMsg"></div></div></div>`;};
+  window.choosePat=function(c,i){let q=pat.qs[pat.q];if(c===q.ans){try{addCoin&&addCoin()}catch(e){} pat.q++; if(pat.q>=pat.qs.length){try{addGem&&addGem()}catch(e){} levelCompleteModal('pattern',pat.i,`startPattern(${pat.i})`)} else renderPat();} else {let m=$('ptMsg'); if(m)m.textContent='Try again.'; let b=$('pt'+i); if(b)b.classList.add('shake');}};
+
+  // Sound Sort Forest: level menu first, then playable Sight Word Ballroom-style scene.
+  const sndPos=[[14,18],[34,14],[58,22],[79,15],[90,42],[22,58],[45,63],[68,54]];
+  window.startSound=function(i){bgSafe('rhyme'); const data=soundLevels[i]; window.snd={i,targets:data[1],words:shuf(data[2]).slice(0,8),done:0,active:null,used:{}}; renderSound();};
+  function initialSound(word,targets){let W=String(word).toUpperCase(); for(const t of targets){let T=String(t).toUpperCase(); if(T.length===1 && W.startsWith(T)) return t; if(T==='SH'&&W.startsWith('SH'))return t; if(T==='CH'&&W.startsWith('CH'))return t; if(T==='TH'&&W.startsWith('TH'))return t; if(T==='WH'&&W.startsWith('WH'))return t; if(T==='PH'&&W.startsWith('PH'))return t; if(T==='CK'&&W.endsWith('CK'))return t; if(T==='NG'&&(W.endsWith('NG')||W.endsWith('ING')))return t; if(T==='NK'&&W.endsWith('NK'))return t; if(T==='ING'&&W.endsWith('ING'))return t; if(T==='ED'&&W.endsWith('ED'))return t; if(T==='AI'&&W.includes('AI'))return t; if(T==='AY'&&W.includes('AY'))return t; if(T==='EE'&&W.includes('EE'))return t; if(T==='EA'&&W.includes('EA'))return t; if(T==='OA'&&W.includes('OA'))return t; if(T==='OW'&&W.includes('OW'))return t; if(T==='IGH'&&W.includes('IGH'))return t; if(T==='IE'&&W.includes('IE'))return t; } return targets[0];}
+  window.renderSound=function(){let data=soundLevels[snd.i]; let spark=snd.words.map((w,i)=>snd.used[i]?'':`<button class="soundSparkCircle" onclick="showSoundCard(${i})" style="left:${sndPos[i%sndPos.length][0]}%;top:${sndPos[i%sndPos.length][1]}%"></button>`).join('');let card=(snd.active!==null&&!snd.used[snd.active])?`<button class="soundWordCard" onclick="safeSpeak('${js(snd.words[snd.active])}')">${esc(snd.words[snd.active])}</button>`:'';let chests=snd.targets.map(t=>`<button class="chest soundChest" onclick="trySoundChest('${js(t)}')"><span class="chestLabel">${esc(t)}</span></button>`).join('');P().innerHTML=bar('sound',`✨ ${data[0]}`,`${snd.done}/8`)+`<div class="soundPlay" style="background-image:url(${asset('rhyme.jpg')})">${spark}${card}<div class="soundDock"><div class="soundChestRow">${chests}</div><div class="soundHint">Tap a sparkle. Then tap the matching sound chest.</div><div class="msg" id="soundMsg"></div></div></div>`;};
+  window.showSoundCard=function(i){snd.active=i; safeSpeak(snd.words[i]); renderSound();};
+  window.trySoundChest=function(t){if(snd.active===null){let m=$('soundMsg');if(m)m.textContent='Tap a sparkle first.';return}let correct=initialSound(snd.words[snd.active],snd.targets);if(String(correct)===String(t)){snd.used[snd.active]=true;snd.active=null;snd.done++;try{addCoin&&addCoin()}catch(e){} if(snd.done>=snd.words.length){try{addGem&&addGem()}catch(e){} levelCompleteModal('sound',snd.i,`startSound(${snd.i})`)} else renderSound();}else{let m=$('soundMsg');if(m)m.textContent='Try another chest.';}};
+
+  // Compare Meadow / Alligator Lagoon.
+  const cmpRangesQA=[[1,5],[1,10],[10,15],[1,15],[10,20],[1,20],[1,20]];
+  window.makeCompare=function(i){let [lo,hi]=cmpRangesQA[i]||[1,20],qs=[];while(qs.length<8){let a=lo+Math.floor(Math.random()*(hi-lo+1)),b=lo+Math.floor(Math.random()*(hi-lo+1));if(a!==b)qs.push({a,b})}return qs;};
+  window.startCompare=function(i){bgSafe('home');window.cmp={i,q:0,qs:makeCompare(i),marked:[]};renderCompare();};
+  window.renderCompare=function(){let q=cmp.qs[cmp.q],ready=cmp.marked.includes(q.a)&&cmp.marked.includes(q.b);P().innerHTML=bar('compare',`🐊 ${levels.compare[cmp.i][0]}`,`${cmp.q+1}/8`)+`<div class="qaActivity"><div class="qaCard"><div class="numberLine">${Array.from({length:20},(_,k)=>k+1).map(n=>`<button class="nlNum ${cmp.marked.includes(n)?'hit':''}" onclick="tapCompareNum(${n})">${n}</button>`).join('')}</div>${promptHTML(ready?'Which number is larger? The alligator will eat the larger number.':'Tap both numbers on the number line.')}<div class="compareNums"><span>${q.a}</span><span class="bigSym">?</span><span>${q.b}</span></div>${ready?`<div class="gatorChoices"><button class="gatorCard" onclick="chooseCompare('>')">${gatorSVG('>')}</button><button class="gatorCard" onclick="chooseCompare('<')">${gatorSVG('<')}</button></div>`:''}<div class="msg" id="cmpMsg"></div></div></div>`;};
+  window.tapCompareNum=function(n){let q=cmp.qs[cmp.q];if((n===q.a||n===q.b)&&!cmp.marked.includes(n))cmp.marked.push(n);renderCompare();};
+  window.chooseCompare=function(sym){let q=cmp.qs[cmp.q],ans=q.a>q.b?'>':'<';if(sym===ans){try{addCoin&&addCoin()}catch(e){} cmp.q++; cmp.marked=[]; if(cmp.q>=8){try{addGem&&addGem()}catch(e){} levelCompleteModal('compare',cmp.i,`startCompare(${cmp.i})`)} else renderCompare();}else{let m=$('cmpMsg'); if(m)m.textContent='Try again. The alligator eats the larger number.';}};
+
+  // Dragon Count.
+  window.startCount=function(i){bgSafe('home');window.cnt={i,round:1};newCountRoundQA();};
+  function countConfig(i){let max=[10,10,20,20,20,20,20][i]||10,skip=[1,1,1,2,5,10,1][i]||1;return {max,skip};}
+  function newCountRoundQA(){let {max,skip}=countConfig(cnt.i);let choices=[];if(skip===1){let low=cnt.i===0?1:2; for(let n=low;n<=max;n++)choices.push(n);}else{for(let n=skip;n<=max;n+=skip)choices.push(n);}cnt.target=choices[Math.floor(Math.random()*choices.length)];cnt.groups=makeCoinGroupsQA(cnt.target,skip,cnt.i);cnt.hit=0;cnt.skip=skip;renderCount();}
+  function makeCoinGroupsQA(total,skip,i){let groups=[],count=Math.max(1,total/skip);for(let g=0;g<count;g++)groups.push({x:10+Math.random()*76,y:16+Math.random()*55,label:'🪙'.repeat(skip),done:false}); if(i===0){groups.forEach((g,k)=>{g.x=12+k*10;g.y=42;});}return groups;}
+  window.renderCount=function(){let max=countConfig(cnt.i).max;P().innerHTML=bar('count',`🪙 ${levels.count[cnt.i][0]}`,`${cnt.round}/8`)+`<div class="qaActivity"><div class="qaCard">${promptHTML(cnt.hit<cnt.groups.length?`Tap each ${cnt.skip===1?'coin':'group'} while you count.`:'How many coins did you count?')}<div class="coinArea">${cnt.groups.map((g,i)=>`<button class="${cnt.skip===1?'coinObj':'coinGroup'} ${g.done?'done':''}" style="left:${g.x}%;top:${g.y}%" onclick="tapCoinGroup(${i})">${g.done?'✅':g.label}</button>`).join('')}</div>${cnt.hit===cnt.groups.length?`<div class="answerStrip">${Array.from({length:max},(_,k)=>k+1).map(n=>`<button class="num" onclick="answerCount(${n})">${n}</button>`).join('')}</div>`:''}<div class="msg" id="cntMsg"></div></div></div>`;};
+  window.tapCoinGroup=function(i){let g=cnt.groups[i];if(!g||g.done)return;g.done=true;cnt.hit++;safeSpeak(String(Math.min(cnt.hit*cnt.skip,cnt.target)));renderCount();};
+  window.answerCount=function(n){if(n===cnt.target){try{addCoin&&addCoin()}catch(e){} cnt.round++; if(cnt.round>8){try{addGem&&addGem()}catch(e){} levelCompleteModal('count',cnt.i,`startCount(${cnt.i})`)} else newCountRoundQA();}else{let m=$('cntMsg'); if(m)m.textContent='Try again.';}};
+
+  // Teen Builder: no undefined, no rogue navigation.
+  function teenTarget(){let a=Array.from({length:9},(_,k)=>k+11),recent=teen.recent||[];a=a.filter(n=>!recent.slice(-4).includes(n));let n=a[Math.floor(Math.random()*a.length)]||11;teen.recent=[...recent,n].slice(-6);return n;}
+  window.baseTenHTML=function(n){n=Number(n)||0;let tens=Math.floor(n/10),ones=n%10;let rod='<div class="tenRod">'+Array.from({length:10},()=>'<span></span>').join('')+'</div>';let cube='<div class="oneCube"></div>';return `<div class="baseTenPic">${rod.repeat(tens)}<div class="oneCubes">${cube.repeat(ones)}</div></div>`;};
+  window.startTeen=function(i){bgSafe('home');window.teen={i,q:0,recent:[],filled:new Set(),locked:new Set(),answered:false};teenNextQ();};
+  function teenNextQ(){teen.answered=false;teen.filled=new Set();teen.locked=new Set();teen.target=teenTarget();if(teen.i===1){teen.base=3+Math.floor(Math.random()*6);teen.target=10;teen.locked=new Set(Array.from({length:teen.base},(_,k)=>k));teen.filled=new Set(teen.locked);}if([3,4,6].includes(teen.i))teen.target=teenTarget();renderTeen();}
+  window.renderTeen=function(){let i=teen.i,title=(levels.teen[i]&&levels.teen[i][0])||'Teen Builder';if(i===1){let cells=Array.from({length:10},(_,k)=>`<button class="teenCell ${teen.locked.has(k)?'prefilled':teen.filled.has(k)?'filled studentFilled':''}" onclick="toggleTeenCell(${k})">${teen.filled.has(k)?'🪙':''}</button>`).join('');P().innerHTML=bar('teen','🔟 Make a Ten',`${teen.q+1}/8`)+`<div class="qaActivity"><div class="qaCard">${promptHTML('Fill the frame to make 10.')}<div class="teenHint">${teen.base}+?=10</div><div class="ten teenFrame">${cells}</div><button class="btn" onclick="checkTeen()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;return;} if([3,4,6].includes(i)){let t=teen.target,opts=shuf([t,...shuf(Array.from({length:9},(_,k)=>k+11).filter(n=>n!==t)).slice(0,2)]);P().innerHTML=bar('teen','🔟 Match Teen Numbers',`${teen.q+1}/8`)+`<div class="qaActivity"><div class="qaCard">${promptHTML(`Which picture shows ${t}?`)}<div class="teenChoices">${opts.map(n=>`<button class="choice teenChoice" onclick="chooseTeenMatch(${n},${t})">${baseTenHTML(n)}<b>${n}</b></button>`).join('')}</div><div class="msg" id="teenMsg"></div></div></div>`;return;} let max=i===0?10:20;let cells=Array.from({length:max},(_,k)=>`<button class="teenCell ${teen.filled.has(k)?'filled studentFilled':''}" onclick="toggleTeenCell(${k})">${teen.filled.has(k)?'🟨':''}</button>`).join('');P().innerHTML=bar('teen',`🔟 ${title}`,`${teen.q+1}/8`)+`<div class="qaActivity"><div class="qaCard">${promptHTML(`Build ${teen.target}`)}<div class="ten teenFrame">${cells}</div>${i!==0?`<button class="btn" onclick="teen.filled=new Set(Array.from({length:10},(_,k)=>k));renderTeen()">✨ Make a Ten</button>`:''}<button class="btn" onclick="checkTeen()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;};
+  window.toggleTeenCell=function(k){if(teen.locked&&teen.locked.has(k))return;teen.filled=teen.filled||new Set();teen.filled.has(k)?teen.filled.delete(k):teen.filled.add(k);renderTeen();};
+  window.checkTeen=function(){let ok=teen.i===1?teen.filled.size===10:teen.filled.size===teen.target;if(ok)nextTeen();else{let m=$('teenMsg');if(m)m.textContent='Try again.';}};
+  window.chooseTeenMatch=function(n,t){if(n===t)nextTeen();else{let m=$('teenMsg');if(m)m.textContent='Try again.';}};
+  window.nextTeen=function(){try{addCoin&&addCoin()}catch(e){} teen.q++; if(teen.q>=8){try{addGem&&addGem()}catch(e){} levelCompleteModal('teen',teen.i,`startTeen(${teen.i})`)}else teenNextQ();};
+
+  // Bakery compact answers and mixed subtraction handled here too.
+  if(typeof window.newMixedOrder==='function'){
+    const _add=window.newOrder, _sub=window.newSubOrder;
+    window.newMixedOrder=function(){window.bakMode='mixed';let last=window.__lastMix||'sub';let next=last==='sub'?'add':'sub';window.__lastMix=next;return next==='sub'?_sub():_add();};
+  }
+
+  // Phone input is typed into the partially-hidden row only.
+  function fmtPhone(p){p=String(p||'').replace(/\D/g,'');return p.length>=10?`${p.slice(0,3)}-${p.slice(3,6)}-${p.slice(6,10)}`:p;}
+  function fillMask(mask,typed){let j=0;return String(mask).replace(/_/g,()=>typed[j++]||'_');}
+  if(typeof window.renderPhonePractice==='function') window.renderPhonePractice=function(label,mask){let phone=msgState[msgGame.which+'phone'];let visible=fillMask(mask,msgGame.typed||'');P().innerHTML=bar('messenger',`📞 ${esc(label)}'s Number`,`${(msgGame.rep||0)+1}/4`)+`<div class="activity"><div class="card phoneCard"><div class="messengerLine fullRef">${fmtPhone(phone)}</div><div class="messengerLine">${visible}</div><div class="phoneKeypad">${['1','2','3','4','5','6','7','8','9','⌫','0','📞'].map(k=>k==='📞'?`<button class="phoneKey phoneCall" onclick="checkPhone()">📞</button>`:k==='⌫'?`<button class="phoneKey phoneBack" onclick="msgGame.typed=(msgGame.typed||'').slice(0,-1);renderPhonePractice('${js(label)}','${js(mask)}')">⌫</button>`:`<button class="phoneKey" onclick="if((msgGame.typed||'').length<msgGame.target.length)msgGame.typed=(msgGame.typed||'')+'${k}';renderPhonePractice('${js(label)}','${js(mask)}')">${k}</button>`).join('')}</div><div class="miniProgress">Practice this section 4 times.</div><div class="msg" id="msgMsg"></div></div></div>`;};
+
+  // Shape Match next-level flow.
+  const _nextShapeMatchQA = window.nextShapeMatch;
+  window.nextShapeMatch=function(l,q){try{addCoin&&addCoin()}catch(e){} if(q>=7){try{addGem&&addGem()}catch(e){} levelCompleteModal('shape',0,`startShapeMatch(${l},0)`)} else startShapeMatch(l,q+1);};
+
+  // Calendar routing and final popup next level.
+  const _chooseClockQA=window.chooseClock;
+  if(typeof _chooseClockQA==='function') window.chooseClock=function(c,a,i){if(c===a){try{addCoin&&addCoin()}catch(e){} clk.q++; if(clk.q>=clk.qs.length){levelCompleteModal('clock',clk.i,`startClock(${clk.i})`)} else renderClock();}else{let m=$('cmsg');if(m)m.textContent='Use the clue on the screen.';}};
+
+  // Make sure initial responsive layout recalculates after Safari paints.
+  setTimeout(()=>{try{updateTop&&updateTop()}catch(e){}},100);
+  setTimeout(()=>{try{updateTop&&updateTop()}catch(e){}},450);
+})();
+/* ===== END EMERGENCY FULL QA PATCH ===== */
 </script>
 
 </body>
