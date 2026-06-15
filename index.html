@@ -794,5 +794,380 @@ showHome();updateTop();
 /* ===== End Final Correction Patch ===== */
 </script>
 
+
+
+<script>
+/* ===== Round-by-round fixes: wing wrapping, gator fit, Sound Sort = Ballroom logic ===== */
+(function(){
+  const $ = window.$ || (id => document.getElementById(id));
+  const P = () => $('layer');
+  function addStyle(css){ document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`); }
+
+  addStyle(`
+    /* Keep the large kid-friendly room buttons, but never let them overlap. */
+    .mapGridMenu{
+      display:grid!important;
+      grid-template-columns:repeat(auto-fit, minmax(142px, 168px))!important;
+      gap:18px!important;
+      justify-content:center!important;
+      align-content:start!important;
+      width:min(96%,760px)!important;
+      margin:16px auto!important;
+      padding:4px!important;
+    }
+    .mapGridMenu .mapTile,
+    .mapGridMenu .roomBtn,
+    .mapGridMenu .btn{
+      width:100%!important;
+      min-width:0!important;
+      height:auto!important;
+      min-height:142px!important;
+      aspect-ratio:1/1!important;
+      box-sizing:border-box!important;
+      white-space:normal!important;
+      overflow:hidden!important;
+    }
+    .mapGridMenu .mapTile span:not(.big),
+    .mapGridMenu .roomBtn span:not(.big){
+      line-height:1.08!important;
+      word-break:normal!important;
+    }
+    @media (max-width:720px){
+      .mapGridMenu{grid-template-columns:repeat(auto-fit, minmax(118px, 146px))!important;gap:12px!important;}
+      .mapGridMenu .mapTile,.mapGridMenu .roomBtn,.mapGridMenu .btn{min-height:118px!important;}
+    }
+
+    /* Keep the exact reference-style gators, but fit them completely inside the buttons. */
+    .gatorCard{overflow:hidden!important;padding:6px!important;min-height:118px!important;}
+    .gatorSymbol{width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;}
+    .gatorSymbol img{
+      width:auto!important;
+      height:auto!important;
+      max-width:82%!important;
+      max-height:82%!important;
+      object-fit:contain!important;
+      display:block!important;
+    }
+    .bigGator .gatorSymbol img{max-width:82%!important;max-height:82%!important;width:auto!important;height:auto!important;}
+
+    /* Sound Sort now follows the Sight Word Ballroom structure: scene + scattered circular sparkles + bottom chests. */
+    .soundQuestGame{height:calc(100% - 72px)!important;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr) auto!important;gap:4px!important;}
+    .soundQuestScene{position:relative!important;height:100%!important;min-height:0!important;overflow:hidden!important;border:5px solid var(--gold,#fff0a6)!important;border-radius:18px!important;background:#151028!important;box-shadow:0 8px 18px rgba(0,0,0,.14)!important;}
+    .soundQuestScene img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important;display:block!important;user-select:none!important;pointer-events:none!important;}
+    .soundQuestSpark{position:absolute!important;z-index:7!important;width:clamp(34px,5.2vw,54px)!important;height:clamp(34px,5.2vw,54px)!important;border-radius:50%!important;display:grid!important;place-items:center!important;background:rgba(255,255,255,.82)!important;border:3px solid rgba(255,214,246,.96)!important;box-shadow:0 0 14px rgba(216,76,207,.8)!important;transform:translate(-50%,-50%)!important;animation:none!important;}
+    .soundQuestSpark:before{content:'✨';font-size:clamp(1.05rem,2.6vw,1.6rem)!important;}
+    .soundQuestSort{background:rgba(255,247,255,.98)!important;border-radius:16px!important;padding:5px 8px 7px!important;box-shadow:0 7px 16px rgba(0,0,0,.10)!important;}
+    .soundQuestChests{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))!important;gap:10px!important;}
+    .soundQuestChests .questChest{width:100%!important;min-height:64px!important;}
+    .soundQuestHint{font-weight:900;text-align:center;font-size:clamp(.82rem,1.8vw,1.05rem);margin-top:2px;color:#40205c;}
+    .soundQuestReveal{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;z-index:12!important;background:rgba(255,255,255,.97)!important;border:5px solid #b86bee!important;border-radius:18px!important;box-shadow:0 8px 18px rgba(0,0,0,.18)!important;padding:10px 18px!important;text-align:center!important;font-weight:900!important;min-width:150px!important;}
+    .soundQuestReveal .pic{font-size:clamp(2rem,5vw,3.4rem)!important;line-height:1!important;margin-bottom:4px!important;}
+    .soundQuestReveal .word{font-size:clamp(1.3rem,3.2vw,2rem)!important;color:#40205c!important;}
+  `);
+
+  // Organic, fixed sparkle locations copied in spirit from Sight Word Ballroom, not a grid.
+  const soundBallroomSparkPos = [[14,18],[32,31],[51,20],[70,34],[84,18],[20,58],[43,63],[68,56]];
+
+  function soundWordCard(i, early){
+    const w = snd.words[i];
+    const pic = early && window.soundPics && soundPics[w] ? `<div class="pic">${soundPics[w]}</div>` : '';
+    return `<button class="soundQuestReveal" onclick="speak('${String(w).replace(/'/g,"\\'")}')">${pic}<div class="word">${w}</div></button>`;
+  }
+
+  // Use the same core behavior as Sight Word Ballroom: tap sparkle -> reveal/read item; then choose bottom chest.
+  window.renderSound = function(){
+    const data = soundLevels[snd.i];
+    const early = snd.i < 17;
+    const sparkles = snd.words.map((w,i)=>{
+      if(snd.used && snd.used[i]) return '';
+      const [x,y] = soundBallroomSparkPos[i % soundBallroomSparkPos.length];
+      return `<button class="soundQuestSpark" aria-label="sound sparkle" onclick="showSoundCard(${i})" style="left:${x}%;top:${y}%"></button>`;
+    }).join('');
+    const reveal = snd.active !== null && !(snd.used && snd.used[snd.active]) ? soundWordCard(snd.active, early) : '';
+    const chests = snd.targets.map(t=>`<div class="questChestWrap"><button class="questChest" onclick="trySoundChest('${String(t).replace(/'/g,"\\'")}')"><span class="questChestLabel">${t}</span></button></div>`).join('');
+    P().innerHTML = bar('sound', `✨ ${data[0]}`, `${snd.done}/8`) +
+      `<div class="soundQuestGame">
+        <div class="soundQuestScene"><img src="${asset('rhyme.jpg')}" alt="Treasure cave">${sparkles}${reveal}</div>
+        <div class="soundQuestSort"><div class="questChests soundQuestChests">${chests}</div><div class="soundQuestHint">Tap a sparkle. Then tap the matching sound chest.</div><div class="msg" id="soundMsg"></div></div>
+      </div>`;
+  };
+
+  window.showSoundCard = function(i){ snd.active = i; speak(snd.words[i]); renderSound(); };
+})();
+/* ===== End round-by-round fixes ===== */
+</script>
+
+
+
+<script>
+/* ===== User-requested round fixes: menus, Make-a-Ten, Shape flow, Sound Sort, alligator fit ===== */
+(function(){
+  const $ = window.$ || (id => document.getElementById(id));
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const P = () => $('layer');
+  const esc = v => String(v).replace(/'/g,"\\'").replace(/\n/g,' ');
+  function addStyle(css){ document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`); }
+
+  addStyle(`
+    /* Big kid-friendly room buttons, but wrapped with real spacing. */
+    .mapGridMenu{
+      display:grid!important;
+      grid-template-columns:repeat(auto-fit,minmax(128px,150px))!important;
+      gap:20px 24px!important;
+      justify-content:center!important;
+      align-content:start!important;
+      width:min(94%,820px)!important;
+      margin:18px auto!important;
+      padding:8px!important;
+      overflow:visible!important;
+    }
+    .mapGridMenu .btn,.mapGridMenu .mapTile,.mapGridMenu .roomBtn{
+      width:100%!important; min-width:0!important; max-width:150px!important;
+      height:auto!important; min-height:128px!important; aspect-ratio:1/1!important;
+      box-sizing:border-box!important; white-space:normal!important; overflow:hidden!important;
+      display:flex!important; flex-direction:column!important; align-items:center!important; justify-content:center!important;
+      gap:6px!important; line-height:1.05!important; padding:10px!important;
+    }
+    .mapGridMenu .big{font-size:clamp(2rem,4.2vw,3rem)!important;line-height:1!important;display:block!important;}
+    .mapGridMenu span:not(.big){font-size:clamp(.88rem,2vw,1.08rem)!important;line-height:1.05!important;}
+    @media (max-width:720px){.mapGridMenu{grid-template-columns:repeat(auto-fit,minmax(112px,132px))!important;gap:14px!important}.mapGridMenu .btn,.mapGridMenu .mapTile,.mapGridMenu .roomBtn{min-height:112px!important;max-width:132px!important}}
+
+    /* Keep the reference alligator art, but fit it fully inside the buttons. */
+    .gatorCard{overflow:hidden!important;padding:8px!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:112px!important;}
+    .gatorSymbol{width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;}
+    .gatorSymbol img,.gatorSymbol svg{max-width:76%!important;max-height:76%!important;width:auto!important;height:auto!important;object-fit:contain!important;display:block!important;}
+    .bigGator .gatorSymbol img,.bigGator .gatorSymbol svg{max-width:74%!important;max-height:74%!important;width:auto!important;height:auto!important;}
+
+    /* Make-a-Ten locked prefilled cells. */
+    .teenCell.prefilled{background:#ffe36b!important;box-shadow:inset 0 0 0 4px rgba(255,255,255,.35);cursor:default!important;}
+    .teenCell.studentFilled{background:#d8f7ff!important;}
+
+    /* Sound Sort = Sight Word Ballroom style: no worksheet overlay, scattered circular sparkles, chests at bottom. */
+    .soundBallroomActivity{height:calc(100% - 74px)!important;border:7px solid #fff0a6!important;border-radius:30px!important;background-size:cover!important;background-position:center!important;position:relative!important;overflow:hidden!important;padding:0!important;display:block!important;}
+    .soundBallroomScene{position:absolute!important;left:0!important;right:0!important;top:0!important;bottom:112px!important;overflow:hidden!important;background:transparent!important;border:0!important;}
+    .soundBallroomDock{position:absolute!important;left:8px!important;right:8px!important;bottom:8px!important;background:rgba(255,255,255,.16)!important;border:0!important;border-radius:24px!important;padding:8px 10px 6px!important;}
+    .soundBallroomDock .soundChestRow{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important;gap:8px!important;margin:0!important;}
+    .soundBallroomDock .soundChest{min-height:76px!important;border-radius:16px 16px 12px 12px!important;}
+    .soundBallroomHint{font-size:clamp(.78rem,1.8vw,1.02rem)!important;font-weight:900!important;text-align:center!important;margin-top:4px!important;background:rgba(255,255,255,.68)!important;border-radius:16px!important;padding:3px 6px!important;color:#40205c!important;}
+    .soundSparkCircle{position:absolute!important;transform:translate(-50%,-50%)!important;width:clamp(44px,6.2vw,62px)!important;height:clamp(44px,6.2vw,62px)!important;border-radius:50%!important;background:rgba(255,255,255,.86)!important;border:4px solid #ffd6f6!important;box-shadow:0 0 16px 7px rgba(216,76,207,.56)!important;display:grid!important;place-items:center!important;animation:none!important;z-index:6!important;}
+    .soundSparkCircle:before{content:'✨';font-size:clamp(1.25rem,3vw,1.8rem)!important;}
+    .soundReveal{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;z-index:10!important;background:rgba(255,254,242,.96)!important;border:5px solid #b86bee!important;border-radius:24px!important;box-shadow:0 8px 0 #7c35c8,0 14px 22px rgba(0,0,0,.18)!important;padding:12px 20px!important;text-align:center!important;}
+    .soundReveal .pic{font-size:clamp(2.8rem,8vw,4.8rem)!important;line-height:1!important;}
+    .soundReveal .soundWord{font-size:clamp(1.4rem,4vw,2.4rem)!important;font-weight:900!important;color:#40205c!important;}
+  `);
+
+  // Better room menus: 2 rows when needed, no overlap.
+  const roomDone = room => { try { return typeof isRoomDone === 'function' && isRoomDone(room); } catch(e){ return false; } };
+  function tile(room,icon,label,action){return `<button class="btn mapTile ${roomDone(room)?'roomCardDone':''}" onclick="${action||`showLevels('${room}')`}"><span class="big">${icon}</span><span>${label}</span>${roomDone(room)?'<span>✅</span>':''}</button>`;}
+  window.showWing=function(kind){
+    if(typeof ensurePatchState==='function') ensurePatchState();
+    if(typeof bg==='function') bg(kind==='reading'?'reading':kind==='math'?'bakery':'clock');
+    let title=kind==='reading'?'📚 Reading Wing':kind==='math'?'🔢 Math Kingdom':'🌎 Adventure Wing';
+    let buttons='';
+    if(kind==='reading') buttons=[tile('sight','👑','Sight Word Ballroom',`showLevels('sight')`),tile('reading','📚','Reading Adventure'),tile('rhyme','💎','Rhyming Treasure'),tile('sound','✨','Sound Sort Forest'),tile('word','🔤','Spelling Tower')].join('');
+    else if(kind==='math') buttons=[tile('bakery','🧁','Royal Bakery','startBakery()'),tile('pattern','🌷','Pattern Garden'),tile('compare','🐊','Alligator Lagoon'),tile('count','🪙','Dragon Count'),tile('teen','🔟','Teen Builder'),tile('shape','🔷','Shape Castle')].join('');
+    else buttons=[tile('clock','🕰️','Clock Tower'),tile('messenger','📞','Messenger'),tile('map','🗺️','Arrow Path')].join('');
+    P().innerHTML=`<div class="bar levelOnly"><div class="barTitle">${title}</div></div><div class="panel cleanPanel"><div class="mapGridMenu">${buttons}</div></div>`;
+    if(typeof updateTop==='function') updateTop();
+  };
+
+  // Shape Castle hub + flow.
+  function shapeDone(i){return !!(window.state && state.completed && state.completed.shape && state.completed.shape[i]);}
+  function shapeUnlocked(){return (window.state && state.unlocked && state.unlocked.shape) || 1;}
+  window.showShapeHub=function(){
+    if(typeof bg==='function') bg('home');
+    let unlocked=shapeUnlocked();
+    let items=[['🔷','Shape Match',0,'startShapeMatch(0,0)'],['🔎','Shape Hunt',1,'startShapeHunt(0)'],['❓','Attributes',2,'startShapeAttr(0,0)'],['⭐','Mixed Review',3,'startShapeMixed()']];
+    P().innerHTML=`<div class="bar"><button class="btn wingBack" onclick="showWing('math')">⬅️ Math</button><div class="barTitle">🔷 Shape Castle</div><div></div></div><div class="panel cleanPanel"><div class="mapGridMenu">${items.map(([ic,lab,idx,act])=>{let locked=idx>=unlocked;return `<button class="btn mapTile ${shapeDone(idx)?'completedPink roomCardDone':''} ${locked?'locked':''}" onclick="${locked?`speak('Complete the level before this one first.')`:act}"><span class="big">${shapeDone(idx)?'✅':locked?'🔒':ic}</span><span>${lab}</span></button>`}).join('')}</div></div>`;
+  };
+  window.levelCompleteModal=function(room,i,playAgainFn){
+    let isShape = room === 'shape';
+    if(!isShape && typeof markLevelDone==='function') markLevelDone(room,i);
+    let w = typeof wingOf==='function' ? wingOf(room) : 'math';
+    let hasNext=false, startNext='';
+    if(isShape){
+      const nextActions=[`startShapeHunt(0)`,`startShapeAttr(0,0)`,`startShapeMixed()`];
+      hasNext=i<2; startNext=nextActions[i]||`showShapeHub()`;
+    } else {
+      let arr=(window.levels&&levels[room])||[]; let next=i+1;
+      hasNext=next<arr.length && !/mixed|bonus/i.test(arr[next]?.[0]||'');
+      startNext=`startLevel('${room}',${next})`;
+    }
+    const backLabel=isShape?'Shape Castle':(typeof wingName==='function'?wingName(w):'Wing');
+    const backAction=isShape?'showShapeHub()':`showWing('${w}')`;
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>⭐ Great Job! ⭐</h2><div class="prompt">You earned 💎 +1</div><button class="btn" onclick="this.closest('.modal').remove();${playAgainFn}">🔄 Play Again</button>${hasNext?`<button class="btn" onclick="this.closest('.modal').remove();${startNext}">➡️ Next Level</button>`:`<button class="btn" onclick="this.closest('.modal').remove();${backAction}">⬅️ Back to ${backLabel}</button>`}</div></div>`);
+  };
+
+  // Make a Ten: pre-fill the known addend and lock those counters; child fills the missing spaces.
+  const oldStartTeen = window.startTeen;
+  window.startTeen=function(i){
+    if(typeof bg==='function') bg('home');
+    window.teen={i,q:0,target:11+Math.floor(Math.random()*9),filled:new Set(),locked:new Set(),tens:0,ones:0,recent:[],answered:false};
+    if(i===1){ teen.makeBase=3+Math.floor(Math.random()*6); teen.target=10; teen.locked=new Set(Array.from({length:teen.makeBase},(_,k)=>k)); teen.filled=new Set(teen.locked); }
+    renderTeen();
+  };
+  const oldToggleTeenCell = window.toggleTeenCell;
+  window.toggleTeenCell=function(i){
+    teen.filled=teen.filled||new Set(); teen.locked=teen.locked||new Set();
+    if(teen.locked.has(i)) return;
+    teen.filled.has(i)?teen.filled.delete(i):teen.filled.add(i);
+    renderTeen();
+  };
+  const oldRenderTeen = window.renderTeen;
+  window.renderTeen=function(){
+    let i=teen.i,t=teen.target;
+    if(i===1){
+      if(!teen.locked || !teen.locked.size){ teen.makeBase=teen.makeBase || (3+Math.floor(Math.random()*6)); teen.locked=new Set(Array.from({length:teen.makeBase},(_,k)=>k)); teen.filled=new Set([...(teen.filled||[]),...teen.locked]); }
+      let filled=teen.makeBase || teen.locked.size;
+      let cells=Array.from({length:10},(_,idx)=>`<button class="teenCell ${teen.locked.has(idx)?'prefilled':teen.filled.has(idx)?'filled studentFilled':''}" onclick="toggleTeenCell(${idx})">${teen.filled.has(idx)?'🪙':''}</button>`).join('');
+      P().innerHTML=(typeof bar==='function'?bar('teen',`🔟 Make a Ten`,`${teen.q+1}/8`):'')+`<div class="activity"><div class="card">${typeof promptHTML==='function'?promptHTML('Fill the frame to make 10.'):''}<div class="teenHint">${filled}+?=10</div><div class="twoTens"><div class="teenFrame">${cells}</div></div><button class="btn" onclick="checkMakeTen()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;
+    } else oldRenderTeen && oldRenderTeen();
+  };
+  const oldNextTeen = window.nextTeen;
+  window.nextTeen=function(){
+    if(typeof addCoin==='function') addCoin();
+    teen.q++;
+    if(teen.q>=8){ if(typeof addGem==='function') addGem(); levelCompleteModal('teen',teen.i,`startTeen(${teen.i})`); }
+    else{
+      teen.answered=false; teen.filled=new Set(); teen.locked=new Set(); teen.tens=0; teen.ones=0; delete teen.makeBase;
+      if(teen.i===1){ teen.makeBase=3+Math.floor(Math.random()*6); teen.target=10; teen.locked=new Set(Array.from({length:teen.makeBase},(_,k)=>k)); teen.filled=new Set(teen.locked); }
+      else { teen.target=(typeof nextTeenTarget==='function')?nextTeenTarget():11+Math.floor(Math.random()*9); }
+      renderTeen();
+    }
+  };
+
+  // Sound Sort: same visual/game structure as Sight Word Ballroom: scattered fixed sparkles, bottom chests, no bounce/grid/overlay.
+  const soundSparkPositions=[[12,24],[31,18],[51,30],[72,19],[88,36],[20,58],[43,63],[67,55]];
+  window.startSound=function(i){
+    if(typeof bg==='function') bg('rhyme');
+    let data=soundLevels[i];
+    window.snd={i,targets:data[1],words:shuffle(data[2]).slice(0,8),done:0,active:null,used:{}};
+    renderSound();
+  };
+  window.renderSound=function(){
+    let data=soundLevels[snd.i],early=snd.i<17;
+    let sparkles=snd.words.map((w,i)=>{ if(snd.used[i]) return ''; let [x,y]=soundSparkPositions[i%soundSparkPositions.length]; return `<button class="soundSparkCircle" aria-label="sound sparkle" onclick="showSoundCard(${i})" style="left:${x}%;top:${y}%"></button>`; }).join('');
+    let card=(snd.active!==null && !snd.used[snd.active]) ? soundCardHTML(snd.active,early) : '';
+    let chests=snd.targets.map(t=>`<button class="chest soundChest" onclick="trySoundChest('${esc(t)}')"><span class="chestLabel">${t}</span></button>`).join('');
+    P().innerHTML=(typeof bar==='function'?bar('sound',`✨ ${data[0]}`,`${snd.done}/8`):'')+`<div class="soundBallroomActivity" style="background-image:url(${asset('rhyme.jpg')})"><div class="soundBallroomScene">${sparkles}${card}</div><div class="soundBallroomDock"><div class="soundChestRow">${chests}</div><div class="soundBallroomHint">Tap a sparkle. Then tap the matching sound chest.</div><div class="msg" id="soundMsg"></div></div></div>`;
+  };
+  window.showSoundCard=function(i){ snd.active=i; speak(snd.words[i]); renderSound(); };
+
+  // Layout re-check after initial Safari paint.
+  function refresh(){try{document.body.style.overflow='hidden'; if(typeof updateTop==='function') updateTop();}catch(e){}}
+  window.addEventListener('load',()=>{setTimeout(refresh,80);setTimeout(refresh,280);});
+  window.addEventListener('pageshow',()=>setTimeout(refresh,120));
+  window.addEventListener('orientationchange',()=>setTimeout(refresh,220));
+  setTimeout(refresh,120);
+})();
+/* ===== End user-requested round fixes ===== */
+</script>
+
+
+<script>
+/* ===== Final one-by-one fixes: bakery nav/mixed, room grid spacing, robust progression ===== */
+(function(){
+  const $ = window.$ || (id=>document.getElementById(id));
+  const P = () => $('layer');
+  function addStyle(css){ document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`); }
+  addStyle(`
+    /* Force room/wing menus to wrap cleanly with generous spacing; no overlap. */
+    .mapGridMenu{
+      display:grid!important;
+      grid-template-columns:repeat(auto-fit,minmax(132px,154px))!important;
+      gap:22px 28px!important;
+      justify-content:center!important;
+      align-content:start!important;
+      width:min(96%,900px)!important;
+      margin:18px auto!important;
+      overflow:visible!important;
+    }
+    .mapGridMenu .btn,.mapGridMenu .mapTile,.mapGridMenu .roomBtn{
+      max-width:154px!important; min-height:132px!important; aspect-ratio:1/1!important;
+      flex:0 0 auto!important; margin:0!important;
+    }
+    @media (max-width:760px){
+      .mapGridMenu{grid-template-columns:repeat(auto-fit,minmax(112px,132px))!important;gap:14px 18px!important;margin-top:10px!important}
+      .mapGridMenu .btn,.mapGridMenu .mapTile,.mapGridMenu .roomBtn{max-width:132px!important;min-height:112px!important}
+    }
+    /* Ensure alligator reference PNGs are fully visible inside the buttons. */
+    .gatorCard{overflow:hidden!important;padding:10px!important;}
+    .gatorSymbol img,.gatorSymbol svg{max-width:68%!important;max-height:68%!important;width:auto!important;height:auto!important;object-fit:contain!important;}
+    .bigGator .gatorSymbol img,.bigGator .gatorSymbol svg{max-width:66%!important;max-height:66%!important;}
+    /* Royal Bakery header must stay short in landscape. */
+    .bakeryBar .btn{white-space:nowrap!important;min-width:100px!important;padding-left:12px!important;padding-right:12px!important;}
+    .bakeryBar .barTitle{font-size:clamp(1.05rem,2.7vw,1.65rem)!important;}
+    .bakeryBar .progressPill{font-size:clamp(.85rem,2.1vw,1.1rem)!important;white-space:nowrap!important;}
+  `);
+
+  function bakeryBar(title){
+    return `<div class="bar bakeryBar"><button class="btn" onclick="startBakery()">⬅️ Levels</button><div class="barTitle">${title||'🧁 Bakery'}</div><div class="progressPill">Orders Served: ${window.bak?.served||0}</div></div>`;
+  }
+
+  // Make Mixed Review actually alternate/mix addition and subtraction rather than getting stuck on addition.
+  window.newMixedOrder = function(){
+    window.bakMode='mixed';
+    // Avoid long runs of the same type by alternating when possible, with a random first problem.
+    const last = window.__lastMixedBakeryType || (Math.random()<.5?'sub':'add');
+    const next = last==='add' ? 'sub' : 'add';
+    window.__lastMixedBakeryType = next;
+    if(next==='sub') return newSubOrder();
+    return newOrder();
+  };
+
+  // Override addition bakery renderer with a real Levels back button and compact title.
+  window.renderBakery = function(){
+    let txt=bak.stage==='first'?`The ${bak.name} wants ${bak.a} ${bak.food}`:bak.stage==='second'?`The ${bak.name} wants ${bak.b} ${bak.food2}`:`How many treats altogether?`;
+    let answerBlock=bak.stage==='answer'?`<div class="prompt">${bak.a} + ${bak.b} = ?</div><div class="numPadRow"><div class="nums">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="num ${bak.selected===n?'sel':''}" onclick="bak.selected=${n};renderBakery()">${n}</button>`).join('')}</div><button class="btn checkSide" onclick="submitBakery()">Check Answer</button></div>`:'';
+    P().innerHTML=bakeryBar(bakMode==='mixed'?'🔀 Mixed Bakery':'➕ Addition Bakery')+`<div class="activity" style="background-image:url(${asset('bakery.jpg')})"><div class="card"><div class="cust"><span class="char">${bak.char}</span><span>${txt}</span></div><div class="ten">${bak.fill.map((x,i)=>`<button class="cell ${x?'filled':''} ${bak.locked&&bak.locked[i]?'locked':''}" onclick="toggleCell(${i})">${x}</button>`).join('')}</div>${answerBlock}${bak.stage!=='answer'?`<button class="btn" onclick="submitBakery()">Serve Order</button>`:''}<div class="msg" id="bakMsg"></div></div></div>`;
+  };
+
+  // Override subtraction bakery renderer with the same compact Levels back button.
+  window.renderSubBakery = function(){
+    let prompt=bak.stage==='build'?`The princess baked ${bak.total} ${bak.food}.`:(bak.stage==='serve'?`${bak.take} ${bak.food} were served to the dragon.`:`How many ${bak.food} are left?`);
+    let plate=bak.stage!=='build'?`<div class="dragonPlate">🐉 Dragon's plate: ${bak.fill.map((x,i)=>bak.servedCells[i]?x:'').join('')}</div>`:'';
+    let answer=bak.stage==='answer'?`<div class="numPadRow"><div class="nums">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="num ${bak.selected===n?'sel':''}" onclick="bak.selected=${n};renderSubBakery()">${n}</button>`).join('')}</div><button class="btn checkSide" onclick="submitSubBakery()">Check Answer</button></div>`:'';
+    P().innerHTML=bakeryBar(bakMode==='mixed'?'🔀 Mixed Bakery':'➖ Subtraction Bakery')+`<div class="activity" style="background-image:url(${asset('bakery.jpg')})"><div class="card"><div class="cust"><span class="char">🐉</span><span>${prompt}</span></div><div class="ten">${bak.fill.map((x,i)=>`<button class="cell ${x?'filled':''}" onclick="toggleSubCell(${i})">${bak.servedCells[i]?'❌':x}</button>`).join('')}</div>${plate}${answer}${bak.stage!=='answer'?`<button class="btn" onclick="submitSubBakery()">✅ Check</button>`:''}<div class="msg" id="bakMsg"></div></div></div>`;
+  };
+
+  // Addition submit: after a mixed addition problem, return to mixed generator, not addition-only.
+  window.submitBakery = function(){
+    if(bak.stage==='first'){
+      if(countFilled()===bak.a){bak.locked=bak.fill.map(Boolean);bak.stage='second';renderBakery()}
+      else errBak(`Count ${bak.a}, then serve.`);
+    }else if(bak.stage==='second'){
+      if(countUnlockedFilled()===bak.b&&countFilled()===bak.a+bak.b){bak.stage='answer';renderBakery()}
+      else errBak(`Add ${bak.b} more, then serve.`);
+    }else{
+      if(bak.selected===bak.a+bak.b){
+        if(typeof addCoin==='function') addCoin();
+        bak.served=(bak.served||0)+1;
+        const next = bakMode==='mixed' ? 'newMixedOrder()' : 'newOrder()';
+        document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>🎉 Great job!</h2><div class="prompt">${bak.a} + ${bak.b} = ${bak.a+bak.b}</div><button class="btn" onclick="this.closest('.modal').remove();${next}">Next Order</button></div></div>`);
+      }else errBak('Choose the total, then check.');
+    }
+  };
+
+  // Subtraction submit: keep mixed mode cycling through addition/subtraction.
+  window.submitSubBakery = function(){
+    if(bak.stage==='build'){
+      if(bak.fill.filter(Boolean).length===bak.total){bak.stage='serve';renderSubBakery()}
+      else errBak(`Add ${bak.total} treats first.`);
+    }else if(bak.stage==='serve'){
+      if(bak.servedCells.filter(Boolean).length===bak.take){bak.stage='answer';renderSubBakery()}
+      else errBak(`Serve ${bak.take} treats to the dragon.`);
+    }else{
+      if(bak.selected===bak.left){
+        if(typeof addCoin==='function') addCoin();
+        bak.served=(bak.served||0)+1;
+        const next = bakMode==='mixed' ? 'newMixedOrder()' : 'newSubOrder()';
+        document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>🎉 Great job!</h2><div class="prompt">${bak.total} - ${bak.take} = ${bak.left}</div><button class="btn" onclick="this.closest('.modal').remove();${next}">Next Order</button></div></div>`);
+      }else errBak('Choose how many are left.');
+    }
+  };
+})();
+/* ===== End final one-by-one fixes ===== */
+</script>
+
 </body>
 </html>
