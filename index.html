@@ -1770,7 +1770,41 @@ showHome();updateTop();
   // Count
   function countCfg3(i){return [{max:10,skip:1,line:true},{max:10,skip:1},{max:20,skip:1},{max:20,skip:2},{max:20,skip:5},{max:20,skip:10},{max:20,skip:1}][i]||{max:10,skip:1,line:false};}
   window.startCount=function(i){ safeBg('home'); window.cnt3={i,q:0}; newCount3(); };
-  function newCount3(){let c=countCfg3(cnt3.i),vals=[]; for(let n=c.skip;n<=c.max;n+=c.skip) vals.push(n); if(c.skip===1&&cnt3.i>0) vals=vals.filter(n=>n>1); cnt3.target=vals[Math.floor(Math.random()*vals.length)]||1; cnt3.hit=0; cnt3.groups=Array.from({length:Math.max(1,cnt3.target/c.skip)},(_,k)=>({x:c.line?10+k*8.5:10+Math.random()*78,y:c.line?42:16+Math.random()*58,done:false,label:'🪙'.repeat(c.skip)})); renderCount(); }
+  function newCount3(){
+    let c=countCfg3(cnt3.i),vals=[];
+    for(let n=c.skip;n<=c.max;n+=c.skip) vals.push(n);
+    if(c.skip===1&&cnt3.i>0) vals=vals.filter(n=>n>1);
+    cnt3.target=vals[Math.floor(Math.random()*vals.length)]||1;
+    cnt3.hit=0;
+    const totalGroups=Math.max(1,Math.ceil(cnt3.target/c.skip));
+    function spreadPositions(n){
+      const pts=[];
+      const minD=n>14?10:n>10?12:15;
+      let attempts=0;
+      while(pts.length<n && attempts<2500){
+        attempts++;
+        const x=12+Math.random()*76;
+        const y=18+Math.random()*60;
+        if(pts.every(pt=>Math.hypot(pt.x-x,pt.y-y)>=minD)) pts.push({x,y});
+      }
+      // Fallback: deterministic staggered grid, still not overlapping.
+      if(pts.length<n){
+        pts.length=0;
+        const cols=Math.ceil(Math.sqrt(n*1.45));
+        const rows=Math.ceil(n/cols);
+        for(let k=0;k<n;k++){
+          const col=k%cols,row=Math.floor(k/cols);
+          pts.push({x:14+(col+0.5)*(72/cols),y:20+(row+0.5)*(56/rows)});
+        }
+      }
+      return pts;
+    }
+    const pts=c.line
+      ? Array.from({length:totalGroups},(_,k)=>({x:10+k*(80/Math.max(totalGroups-1,1)),y:42}))
+      : spreadPositions(totalGroups);
+    cnt3.groups=pts.map(pt=>({x:pt.x,y:pt.y,done:false,label:'🪙'.repeat(c.skip)}));
+    renderCount();
+  }
   window.renderCount=function(){let c=countCfg3(cnt3.i); P().innerHTML=bar3('count',`🪙 ${esc((LEVELS.count[cnt3.i]||['Count'])[0])}`,`${cnt3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">${cnt3.hit<cnt3.groups.length?`Tap each ${c.skip===1?'coin':'group'} while you count.`:'How many coins did you count?'}</div><div class="coinArea3">${cnt3.groups.map((g,i)=>`<button class="coin3" style="left:${g.x}%;top:${g.y}%" onclick="tapCount3(${i})">${g.done?'✅':g.label}</button>`).join('')}</div>${cnt3.hit===cnt3.groups.length?`<div class="answerBtns3">${Array.from({length:c.max},(_,k)=>k+1).map(n=>`<button onclick="answerCount3(${n})">${n}</button>`).join('')}</div>`:''}<div class="msg" id="cntMsg"></div></div></div>`; };
   window.tapCount3=function(i){let g=cnt3.groups[i]; if(!g||g.done)return; g.done=true; cnt3.hit++; safeSpeak(String(Math.min(cnt3.hit*countCfg3(cnt3.i).skip,cnt3.target))); renderCount(); };
   window.answerCount3=function(n){ if(n===cnt3.target){try{addCoin&&addCoin()}catch(e){} cnt3.q++; if(cnt3.q>=8){try{addGem&&addGem()}catch(e){} complete3('count',cnt3.i,`startCount(${cnt3.i})`)}else newCount3();}else{let m=$('cntMsg'); if(m)m.textContent='Try again.';} };
@@ -1780,9 +1814,28 @@ showHome();updateTop();
   function baseTen3(n){n=Number(n)||0;let rod='<div class="tenRod3">'+Array.from({length:10},()=>'<span></span>').join('')+'</div>';let cubes='<div class="cubeWrap3">'+Array.from({length:n%10},()=>'<div class="cube3"></div>').join('')+'</div>';return `<div class="baseTenPic3">${rod.repeat(Math.floor(n/10))}${cubes}</div>`;}
   window.startTeen=function(i){ safeBg('home'); window.teen3={i,q:0,recent:[],filled:new Set(),locked:new Set()}; newTeen3(); };
   function newTeen3(){teen3.filled=new Set(); teen3.locked=new Set(); teen3.target=teenTarget3(); if(teen3.i===1){teen3.base=3+Math.floor(Math.random()*6); teen3.target=10; teen3.locked=new Set(Array.from({length:teen3.base},(_,k)=>k)); teen3.filled=new Set(teen3.locked);} renderTeen();}
-  window.renderTeen=function(){let i=teen3.i,title=(LEVELS.teen[i]||['Teen Builder'])[0]; if(i===0||i===1){let cells=Array.from({length:i===0?20:10},(_,k)=>`<button class="teenCell3 ${teen3.locked.has(k)?'locked':teen3.filled.has(k)?'filled':''}" onclick="toggleTeen3(${k})">${teen3.filled.has(k)?'🟨':''}</button>`).join(''); let hint=i===1?`<div style="font-weight:900;font-size:1.2rem">${teen3.base}+?=10</div>`:''; P().innerHTML=bar3('teen',`🔟 ${esc(title)}`,`${teen3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">${i===1?'Fill the frame to make 10.':`Build ${teen3.target}`}</div>${hint}<div class="teenFrame3">${cells}</div>${i===1?'' : '<button class="btn" onclick="teen3.filled=new Set(Array.from({length:10},(_,k)=>k));renderTeen()">✨ Make a Ten</button>'}<button class="btn" onclick="checkTeen3()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`; return;} let t=teen3.target, opts=shuf([t,...shuf(Array.from({length:9},(_,k)=>k+11).filter(n=>n!==t)).slice(0,2)]); P().innerHTML=bar3('teen',`🔟 ${esc(title)}`,`${teen3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Which picture shows ${t}?</div><div class="teenChoices3">${opts.map(n=>`<button class="teenChoice3" onclick="chooseTeen3(${n})">${baseTen3(n)}<b>${n}</b></button>`).join('')}</div><div class="msg" id="teenMsg"></div></div></div>`;};
+  window.renderTeen=function(){
+    let i=teen3.i,title=(LEVELS.teen[i]||['Teen Builder'])[0];
+    if(i===0){
+      const ones=teen3.target-10;
+      const first=Array.from({length:10},(_,k)=>`<button class="teenCell3 locked" disabled>🟨</button>`).join('');
+      const second=Array.from({length:10},(_,k)=>{const idx=10+k;return `<button class="teenCell3 ${teen3.filled.has(idx)?'filled':''}" onclick="toggleTeen3(${idx})">${teen3.filled.has(idx)?'🟨':''}</button>`}).join('');
+      P().innerHTML=bar3('teen',`🔟 ${esc(title)}`,`${teen3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Build ${teen3.target}</div><div class="teenEquation3">10 + ${ones} = ${teen3.target}</div><div class="teenTwoFrames3"><div class="teenTenFrame3">${first}</div><div class="teenTenFrame3">${second}</div></div><button class="btn" onclick="teen3.filled=new Set(Array.from({length:${ones}},(_,k)=>10+k));renderTeen()">✨ Fill the Ones</button><button class="btn" onclick="checkTeen3()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;
+      return;
+    }
+    if(i===1){
+      let cells=Array.from({length:10},(_,k)=>`<button class="teenCell3 ${teen3.locked.has(k)?'locked':teen3.filled.has(k)?'filled':''}" onclick="toggleTeen3(${k})">${teen3.filled.has(k)?'🟨':''}</button>`).join('');
+      P().innerHTML=bar3('teen',`🔟 ${esc(title)}`,`${teen3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Fill the frame to make 10.</div><div class="teenEquation3">${teen3.base} + ? = 10</div><div class="teenFrame3">${cells}</div><button class="btn" onclick="checkTeen3()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;
+      return;
+    }
+    let t=teen3.target, opts=shuf([t,...shuf(Array.from({length:9},(_,k)=>k+11).filter(n=>n!==t)).slice(0,2)]);
+    P().innerHTML=bar3('teen',`🔟 ${esc(title)}`,`${teen3.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Which picture shows ${t}?</div><div class="teenChoices3">${opts.map(n=>`<button class="teenChoice3" onclick="chooseTeen3(${n})">${baseTen3(n)}<b>${n}</b></button>`).join('')}</div><div class="msg" id="teenMsg"></div></div></div>`;
+  };
   window.toggleTeen3=function(k){ if(teen3.locked.has(k))return; teen3.filled.has(k)?teen3.filled.delete(k):teen3.filled.add(k); renderTeen();};
-  window.checkTeen3=function(){let ok=teen3.i===1?teen3.filled.size===10:teen3.filled.size===teen3.target; if(ok)nextTeen3(); else {let m=$('teenMsg'); if(m)m.textContent='Try again.';}};
+  window.checkTeen3=function(){
+    let ok=teen3.i===1?teen3.filled.size===10:(teen3.i===0?teen3.filled.size===(teen3.target-10):teen3.filled.size===teen3.target);
+    if(ok)nextTeen3(); else {let m=$('teenMsg'); if(m)m.textContent='Try again.';}
+  };
   window.chooseTeen3=function(n){ if(n===teen3.target)nextTeen3(); else {let m=$('teenMsg'); if(m)m.textContent='Try again.';}};
   function nextTeen3(){try{addCoin&&addCoin()}catch(e){} teen3.q++; if(teen3.q>=8){try{addGem&&addGem()}catch(e){} complete3('teen',teen3.i,`startTeen(${teen3.i})`)}else newTeen3();}
 
@@ -1791,6 +1844,16 @@ showHome();updateTop();
   window.startPattern=function(i){ safeBg('pattern'); window.pat3={i,q:0,qs:makePattern3(i)}; renderPattern(); };
   window.renderPattern=function(){let q=pat3.qs[pat3.q]; P().innerHTML=bar3('pattern',`🌷 ${esc((LEVELS.pattern[pat3.i]||['Patterns'])[0])}`,`${pat3.q+1}/${pat3.qs.length}`)+`<div class="qaActivity3" style="background-image:url(${safeAsset('pattern.jpg')})"><div class="qaCard3"><div class="qaPrompt3">Fix the flower bed.</div><div class="patternLine3">${q.seq.map(x=>`<span>${esc(x)}</span>`).join('')} <span class="patternBlank3">?</span></div><div class="choices">${q.choices.map(c=>`<button class="patternChoice3" onclick="choosePattern3('${js(c)}')">${esc(c)}</button>`).join('')}</div><div class="msg" id="patMsg"></div></div></div>`; };
   window.choosePattern3=function(c){let q=pat3.qs[pat3.q]; if(c===q.ans){try{addCoin&&addCoin()}catch(e){} pat3.q++; if(pat3.q>=pat3.qs.length){try{addGem&&addGem()}catch(e){} complete3('pattern',pat3.i,`startPattern(${pat3.i})`)}else renderPattern();}else{let m=$('patMsg'); if(m)m.textContent='Try again.';}};
+
+
+  addCSS(`
+    .teenTwoFrames3{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:nowrap;margin:8px auto 10px;max-width:100%;}
+    .teenTenFrame3{display:grid;grid-template-columns:repeat(5,42px);gap:6px;border:4px solid #7b20c9;border-radius:18px;padding:8px;background:rgba(255,255,255,.55);box-shadow:0 5px 0 #7c35c8;}
+    .teenTwoFrames3 .teenCell3{width:42px;height:42px;box-shadow:none;}
+    .teenEquation3{font-weight:900;font-size:clamp(1.25rem,4vw,2rem);margin:4px auto 8px;color:#40205c;}
+    @media(max-width:720px){.teenTenFrame3{grid-template-columns:repeat(5,34px);gap:5px;padding:6px}.teenTwoFrames3{gap:10px}.teenTwoFrames3 .teenCell3{width:34px;height:34px}}
+    @media(max-height:650px){.teenTenFrame3{grid-template-columns:repeat(5,34px);gap:5px;padding:6px}.teenTwoFrames3 .teenCell3{width:34px;height:34px}.teenEquation3{font-size:1.2rem}.teenTwoFrames3{margin:4px auto 6px}}
+  `);
 
   try{updateTop&&updateTop()}catch(e){}
 })();
