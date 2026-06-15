@@ -709,5 +709,90 @@ showHome();updateTop();
 })();
 </script>
 
+
+
+<script>
+/* ===== Final Correction Patch: Sound Forest + Reference Alligators + Load Layout ===== */
+(function(){
+  const $ = window.$ || (id => document.getElementById(id));
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const P = () => $('layer');
+  function addStyle(css){ document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`); }
+
+  addStyle(`
+    /* Use the actual reference-style alligator art instead of generated icons */
+    .gatorSymbol{display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;}
+    .gatorSymbol img{width:min(92%,240px);height:auto;object-fit:contain;display:block;}
+    .gatorCard{min-height:120px!important;display:grid!important;place-items:center!important;background:#fffdf2!important;}
+    .bigGator .gatorSymbol img{width:min(240px,35vw);}
+
+    /* Sound Sort should visually match Sight Word Ballroom/Rhyming Treasure */
+    .soundBallroomActivity{height:calc(100% - 76px)!important;border:7px solid #fff0a6;border-radius:30px;background-size:cover;background-position:center;position:relative;overflow:hidden!important;padding:0!important;display:block!important;}
+    .soundBallroomStage{position:absolute;inset:0;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;width:100%!important;max-width:none!important;}
+    .soundBallroomScene{position:absolute;left:0;right:0;top:0;bottom:116px;border:0!important;border-radius:0!important;background:transparent!important;overflow:hidden;}
+    .soundBallroomDock{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(255,255,255,.20);border:0;border-radius:24px;padding:8px 10px 6px;}
+    .soundBallroomDock .soundChestRow{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(115px,1fr))!important;gap:8px!important;margin:0!important;}
+    .soundBallroomDock .soundChest{min-height:78px!important;border-radius:16px 16px 12px 12px!important;}
+    .soundBallroomDock .chestLabel{font-size:clamp(1rem,2.5vw,1.5rem)!important;}
+    .soundBallroomHint{font-size:clamp(.78rem,1.9vw,1.05rem);font-weight:900;text-align:center;margin-top:4px;background:rgba(255,255,255,.72);border-radius:16px;padding:3px 6px;}
+    .soundSparkCircle{position:absolute;transform:translate(-50%,-50%);width:clamp(46px,7vw,66px);height:clamp(46px,7vw,66px);border-radius:50%;background:rgba(255,255,255,.84);border:4px solid #ffd6f6;box-shadow:0 0 18px 8px rgba(216,76,207,.55);display:grid;place-items:center;animation:pulse 1.25s infinite;z-index:4;}
+    .soundSparkCircle:before{content:'✨';font-size:clamp(1.3rem,3.2vw,1.9rem);}
+    .soundReveal{z-index:8!important;background:rgba(255,254,242,.96)!important;border:5px solid #b86bee!important;border-radius:24px!important;box-shadow:0 8px 0 #7c35c8,0 14px 22px rgba(0,0,0,.18)!important;}
+    .soundReveal .pic{font-size:clamp(2.8rem,8vw,4.8rem)!important;line-height:1!important;}
+    .soundReveal .soundWord{font-size:clamp(1.4rem,4vw,2.4rem)!important;}
+
+    /* Prevent initial home/wing tiles from collapsing before Safari finishes layout */
+    .homePanel .door,.mapGridMenu .mapTile{min-width:clamp(135px,18vw,210px)!important;min-height:clamp(135px,18vw,210px)!important;aspect-ratio:1/1!important;}
+    .homePanel .door .big,.mapGridMenu .mapTile .big{font-size:clamp(2rem,5vw,3.4rem)!important;}
+  `);
+
+  // Reference alligators: exact image assets included in this zip.
+  window.gatorSVG = function(symbol){
+    const file = symbol === '>' ? 'gt_gator.png' : symbol === '<' ? 'lt_gator.png' : 'eq_gator.png';
+    const label = symbol === '>' ? 'greater than' : symbol === '<' ? 'less than' : 'equal to';
+    return `<span class="gatorSymbol"><img src="${file}" alt="${label}" draggable="false"></span>`;
+  };
+
+  // Sound Sort: full background, circular sparkles, chests pinned to the bottom, no worksheet panel.
+  window.renderSound = function(){
+    const data = soundLevels[snd.i];
+    const early = snd.i < 17;
+    const sparkleHTML = snd.words.map((w,i)=>{
+      if(snd.used[i]) return '';
+      const x = 17 + (i % 4) * 22;
+      const y = 24 + Math.floor(i / 4) * 34;
+      return `<button class="soundSparkCircle" aria-label="sound sparkle" onclick="showSoundCard(${i})" style="left:${x}%;top:${y}%"></button>`;
+    }).join('');
+    const cardHTML = snd.active !== null ? soundCardHTML(snd.active, early) : '';
+    const chests = snd.targets.map(t=>`<button class="chest soundChest" onclick="trySoundChest('${t}')"><span class="chestLabel">${t}</span></button>`).join('');
+    P().innerHTML = bar('sound', `✨ ${data[0]}`, `${snd.done}/8`) +
+      `<div class="soundBallroomActivity" style="background-image:url(${asset('rhyme.jpg')})">
+        <div class="soundBallroomStage">
+          <div class="soundBallroomScene">${sparkleHTML}${cardHTML}</div>
+          <div class="soundBallroomDock"><div class="soundChestRow">${chests}</div><div class="soundBallroomHint">Tap a sparkle. Then tap the matching sound chest.</div><div class="msg" id="soundMsg"></div></div>
+        </div>
+      </div>`;
+  };
+
+  // Keep sparkle tap behavior like Sight Word Ballroom: reveal + read the word; no chest audio.
+  window.showSoundCard = function(i){ snd.active = i; speak(snd.words[i]); renderSound(); };
+
+  // Re-run layout after Safari finishes its initial paint, so the home buttons don't load squished.
+  function refreshStartLayout(){
+    try{
+      if(typeof updateTop === 'function') updateTop();
+      document.body.style.overflow = 'hidden';
+      const layer = P();
+      if(layer) layer.style.overflow = 'hidden';
+    }catch(e){}
+  }
+  window.addEventListener('load',()=>{setTimeout(refreshStartLayout,80);setTimeout(refreshStartLayout,250);});
+  window.addEventListener('pageshow',()=>setTimeout(refreshStartLayout,120));
+  window.addEventListener('orientationchange',()=>setTimeout(refreshStartLayout,220));
+  setTimeout(refreshStartLayout,120);
+})();
+/* ===== End Final Correction Patch ===== */
+</script>
+
 </body>
 </html>
