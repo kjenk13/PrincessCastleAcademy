@@ -1860,5 +1860,129 @@ showHome();updateTop();
 /* ===== END TRUE FINAL ROUTING REPAIR PATCH ===== */
 </script>
 
+
+<script>
+/* ===== KATIE FIX PATCH: bakery counter, compare images, teen frames, skip counting ===== */
+(function(){
+  const $id = (id)=>document.getElementById(id);
+  const layer = ()=>$id('layer') || document.querySelector('.layer');
+  const htmlEsc = (v)=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const jsEsc = (v)=>String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
+  const shuffle = (a)=>{a=[...a]; for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;};
+  const safeSpeak = (t)=>{try{ if(typeof speak==='function') speak(String(t)); }catch(e){}};
+  const safeBg = (name)=>{try{ if(typeof bg==='function') bg(name); else if(typeof setBg==='function') setBg(name); }catch(e){}};
+  const assetUrl = (name)=>{try{ if(typeof asset==='function') return asset(name); }catch(e){} return name;};
+  const levelTitle = (room,i,fallback)=>{try{ if(window.LEVELS && LEVELS[room] && LEVELS[room][i]) return LEVELS[room][i][0]; }catch(e){} try{ if(typeof levels!=='undefined' && levels[room] && levels[room][i]) return levels[room][i][0]; }catch(e){} return fallback;};
+  const completeLevel = (room,i,replayCall)=>{try{ if(typeof complete3==='function') return complete3(room,i,replayCall); }catch(e){} try{ if(typeof completeModal==='function') return completeModal(room,i,replayCall); }catch(e){} try{ if(typeof complete==='function') return complete(room,i); }catch(e){} };
+  const addStyles = (css)=>{const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);};
+  const topBar = (room,title,prog)=>{
+    const back = room==='bakery' ? 'showLevels(\'bakery\')' : `showLevels('${room}')`;
+    return `<div class="bar"><button class="btn wingBack" onclick="${back}">⬅ Levels</button><div class="barTitle">${title}</div>${prog?`<div class="progressPill">${prog}</div>`:'<div></div>'}</div>`;
+  };
+
+  addStyles(`
+    .gatorBtnFixed{overflow:hidden!important;display:grid!important;place-items:center!important;padding:4px!important;min-height:clamp(90px,18vw,138px)!important;}
+    .gatorBtnFixed img{width:94%!important;height:94%!important;object-fit:contain!important;display:block!important;}
+    .teenTwoFramesK{display:flex;justify-content:center;align-items:flex-start;gap:clamp(10px,2.4vw,24px);flex-wrap:nowrap;margin:8px auto 10px;max-width:100%;}
+    .teenTenFrameK{display:grid;grid-template-columns:repeat(5,clamp(30px,5.2vw,46px));gap:clamp(4px,.9vw,7px);border:4px solid #7b20c9;border-radius:18px;padding:clamp(5px,1vw,8px);background:rgba(255,255,255,.68);box-shadow:0 5px 0 #7c35c8;}
+    .teenCellK{width:clamp(30px,5.2vw,46px);height:clamp(30px,5.2vw,46px);border:4px solid #b86bee;border-radius:12px;background:#fff;box-shadow:0 4px 0 #7c35c8;font-size:clamp(1rem,2.2vw,1.35rem);display:grid;place-items:center;}
+    .teenCellK.filled,.teenCellK.locked{background:#fff6b8;}
+    .teenEquationK{font-weight:900;font-size:clamp(1.25rem,4vw,2rem);margin:4px auto 8px;color:#40205c;}
+    .missingChoicesK{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px auto 2px;}
+    .missingChoicesK button{min-width:54px;height:48px;border-radius:18px;background:linear-gradient(#fff,#fff4bd);border:4px solid #b86bee;box-shadow:0 5px 0 #7c35c8;font-size:1.35rem;font-weight:900;color:#40205c;}
+    .missingChoicesK button.sel{outline:5px solid #ffd747;background:#fff1a6;}
+    .coinAreaK{height:clamp(210px,38vh,330px);position:relative;border:4px solid #fff0a6;border-radius:22px;background:rgba(255,255,255,.34);overflow:hidden;margin:8px auto;}
+    .coinK,.coinGroupK{position:absolute;transform:translate(-50%,-50%);border:4px solid #ffd747;background:#fff8dc;color:#40205c;box-shadow:0 5px 0 #d6a600;font-weight:900;}
+    .coinK{width:clamp(42px,6.2vw,58px);height:clamp(42px,6.2vw,58px);border-radius:50%;font-size:clamp(1.35rem,3vw,2rem);display:grid;place-items:center;}
+    .coinGroupK{border-radius:18px;padding:7px;display:grid;gap:3px;place-items:center;}
+    .coinGroupK.five{grid-template-columns:repeat(5,clamp(20px,3vw,30px));}
+    .coinGroupK.ten{grid-template-columns:repeat(5,clamp(19px,2.7vw,28px));grid-template-rows:repeat(2,clamp(19px,2.7vw,28px));}
+    .coinDotK{width:clamp(19px,2.7vw,28px);height:clamp(19px,2.7vw,28px);border-radius:50%;display:grid;place-items:center;font-size:clamp(.85rem,1.8vw,1.2rem);}
+    .coinK.done,.coinGroupK.done{opacity:.9;outline:5px solid rgba(35,150,90,.35);}
+    .answerBtnsK{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px auto 0;}
+    .answerBtnsK button{min-width:52px;height:46px;border-radius:18px;background:linear-gradient(#fff,#fff4bd);border:4px solid #b86bee;box-shadow:0 5px 0 #7c35c8;font-size:1.25rem;font-weight:900;color:#40205c;}
+    .bakeryK .ten{margin:8px auto;}
+    @media(max-height:650px){.coinAreaK{height:210px}.teenTwoFramesK{margin:4px auto}.teenEquationK{font-size:1.15rem}.teenTenFrameK{grid-template-columns:repeat(5,32px)}.teenCellK{width:32px;height:32px}}
+  `);
+
+  // Royal Bakery: keep served counter accurate and visible.
+  window.startBakery = function(){ safeBg('bakery'); window.bakK={served:0}; newBakeryK(); };
+  function newBakeryK(){
+    const chars=[['🐉','dragon'],['🦄','unicorn'],['🐱','cat'],['🧙','wizard'],['🐸','frog prince']];
+    const foods=['🍓','🫐','🧁','🍪','🍋','🍒'];
+    const c=chars[Math.floor(Math.random()*chars.length)], a=1+Math.floor(Math.random()*5), b=1+Math.floor(Math.random()*(10-a));
+    const food=foods[Math.floor(Math.random()*foods.length)], food2=shuffle(foods.filter(f=>f!==food))[0];
+    window.bakK={...(window.bakK||{}),char:c[0],name:c[1],food,food2,a,b,stage:'first',fill:Array(10).fill(''),locked:Array(10).fill(false),selected:null};
+    renderBakeryK();
+  }
+  window.newBakeryK=newBakeryK;
+  function renderBakeryK(){
+    const b=window.bakK; if(!b) return;
+    const txt=b.stage==='first'?`The ${b.name} wants ${b.a} ${b.food}`:b.stage==='second'?`The ${b.name} wants ${b.b} ${b.food2}`:`How many treats altogether?`;
+    const nums=Array.from({length:10},(_,i)=>i+1);
+    const answerBlock=b.stage==='answer'?`<div class="prompt">${b.a} + ${b.b} = ?</div><div class="answerBtnsK">${nums.map(n=>`<button class="${b.selected===n?'sel':''}" onclick="bakK.selected=${n};renderBakeryK()">${n}</button>`).join('')}</div><button class="btn" onclick="submitBakeryK()">✅ Check Answer</button>`:'';
+    layer().innerHTML=topBar('bakery','🧁 Royal Bakery',`Orders Served: ${b.served||0}`)+`<div class="activity bakeryK" style="background-image:url(${assetUrl('bakery.jpg')})"><div class="card"><div class="cust"><span class="char">${b.char}</span><span>${htmlEsc(txt)}</span></div><div class="ten">${b.fill.map((x,i)=>`<button class="cell ${x?'filled':''} ${b.locked[i]?'locked':''}" onclick="toggleBakeryK(${i})">${x}</button>`).join('')}</div>${answerBlock}${b.stage!=='answer'?`<button class="btn" onclick="submitBakeryK()">Serve Order</button>`:''}<div class="msg" id="bakMsg"></div></div></div>`;
+  }
+  window.renderBakeryK=renderBakeryK;
+  window.toggleBakeryK=function(i){const b=bakK;if(!b||b.stage==='answer'||b.locked[i])return; const f=b.stage==='first'?b.food:b.food2; b.fill[i]=b.fill[i]?'':f; renderBakeryK();};
+  function bCountAll(){return bakK.fill.filter(Boolean).length} function bCountUnlocked(){return bakK.fill.filter((v,i)=>v&&!bakK.locked[i]).length}
+  window.submitBakeryK=function(){const b=bakK,msg=()=>document.getElementById('bakMsg'); if(!b)return;
+    if(b.stage==='first'){ if(bCountAll()===b.a){b.locked=b.fill.map(Boolean);b.stage='second';renderBakeryK();} else if(msg())msg().textContent=`Count ${b.a}, then serve.`; return; }
+    if(b.stage==='second'){ if(bCountUnlocked()===b.b && bCountAll()===b.a+b.b){b.stage='answer';renderBakeryK();} else if(msg())msg().textContent=`Add ${b.b} more, then serve.`; return; }
+    if(b.selected===b.a+b.b){ try{addCoin&&addCoin()}catch(e){} b.served=(b.served||0)+1; document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>🎉 Great job!</h2><div class="prompt">${b.a} + ${b.b} = ${b.a+b.b}</div><button class="btn" onclick="this.closest('.modal').remove();newBakeryK()">Next Order</button></div></div>`); }
+    else if(msg())msg().textContent='Choose the total, then check.';
+  };
+
+  // Teen Builder: level 1 teen frames, level 2 make-a-ten with missing-number choice.
+  window.startTeen=function(i){ safeBg('home'); window.teenK={i,q:0,recent:[]}; newTeenK(); };
+  function randTeen(){let vals=Array.from({length:9},(_,k)=>k+11).filter(n=>!(teenK.recent||[]).slice(-4).includes(n));let n=vals[Math.floor(Math.random()*vals.length)]||15; teenK.recent=[...(teenK.recent||[]),n].slice(-6); return n;}
+  function newTeenK(){
+    const i=teenK.i; teenK.selected=null; teenK.filled=new Set(); teenK.tenFilled=false;
+    if(i===1){ teenK.base=3+Math.floor(Math.random()*6); teenK.target=10; teenK.missing=10-teenK.base; teenK.locked=new Set(Array.from({length:teenK.base},(_,k)=>k)); teenK.filled=new Set(teenK.locked); }
+    else { teenK.target=randTeen(); teenK.missing=teenK.target-10; teenK.locked=new Set(); }
+    renderTeenK();
+  }
+  window.newTeenK=newTeenK;
+  const choiceNums=(ans)=>shuffle([ans,...shuffle(Array.from({length:10},(_,k)=>k).filter(n=>n!==ans)).slice(0,3)]);
+  function missingButtons(){return `<div class="missingChoicesK">${choiceNums(teenK.missing).map(n=>`<button class="${teenK.selected===n?'sel':''}" onclick="teenK.selected=${n};renderTeenK()">${n}</button>`).join('')}</div>`;}
+  function tenCellsK(offset,count,lockedAll=false){return Array.from({length:count},(_,k)=>{let idx=offset+k, filled=offset===0?teenK.tenFilled:teenK.filled.has(idx); if(teenK.i===1) filled=teenK.filled.has(idx); let locked=lockedAll || (teenK.locked&&teenK.locked.has(idx)); return `<button class="teenCellK ${filled?'filled':''} ${locked?'locked':''}" ${lockedAll?'disabled':''} onclick="toggleTeenK(${idx})">${filled?'🟨':''}</button>`;}).join('');}
+  window.renderTeenK=function(){const i=teenK.i,title=levelTitle('teen',i,'Teen Builder');
+    if(i===0){
+      layer().innerHTML=topBar('teen',`🔟 ${htmlEsc(title)}`,`${teenK.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Build ${teenK.target}</div><div class="teenEquationK">10 + ${teenK.selected===null?'?':teenK.selected} = ${teenK.target}</div><div class="teenTwoFramesK"><div class="teenTenFrameK">${Array.from({length:10},(_,k)=>`<button class="teenCellK ${teenK.tenFilled?'filled locked':''}" disabled>${teenK.tenFilled?'🟨':''}</button>`).join('')}</div><div class="teenTenFrameK">${tenCellsK(10,10)}</div></div>${missingButtons()}<button class="btn" onclick="teenK.tenFilled=true;renderTeenK()">✨ Fill the Ten</button><button class="btn" onclick="checkTeenK()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`; return;
+    }
+    if(i===1){
+      layer().innerHTML=topBar('teen',`🔟 ${htmlEsc(title)}`,`${teenK.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Fill the frame to make 10.</div><div class="teenEquationK">${teenK.base} + ${teenK.selected===null?'?':teenK.selected} = 10</div><div class="teenTenFrameK" style="margin:8px auto;">${tenCellsK(0,10)}</div>${missingButtons()}<button class="btn" onclick="checkTeenK()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`; return;
+    }
+    // Keep later teen levels stable using base-ten matching.
+    let t=teenK.target, opts=shuffle([t,...shuffle(Array.from({length:9},(_,k)=>k+11).filter(n=>n!==t)).slice(0,2)]);
+    const baseTen=(n)=>{let rod='<div class="tenRod3">'+Array.from({length:10},()=>'<span></span>').join('')+'</div>';let cubes='<div class="cubeWrap3">'+Array.from({length:n%10},()=>'<div class="cube3"></div>').join('')+'</div>';return `<div class="baseTenPic3">${rod.repeat(Math.floor(n/10))}${cubes}</div>`;};
+    layer().innerHTML=topBar('teen',`🔟 ${htmlEsc(title)}`,`${teenK.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">Which picture shows ${t}?</div><div class="teenChoices3">${opts.map(n=>`<button class="teenChoice3" onclick="chooseTeenK(${n})">${baseTen(n)}<b>${n}</b></button>`).join('')}</div><div class="msg" id="teenMsg"></div></div></div>`;
+  };
+  window.toggleTeenK=function(idx){ if(teenK.i===0 && idx<10)return; if(teenK.locked&&teenK.locked.has(idx))return; teenK.filled.has(idx)?teenK.filled.delete(idx):teenK.filled.add(idx); renderTeenK(); };
+  window.checkTeenK=function(){let ok=false; if(teenK.i===0) ok=teenK.tenFilled && teenK.filled.size===teenK.missing && teenK.selected===teenK.missing; else if(teenK.i===1) ok=teenK.filled.size===10 && teenK.selected===teenK.missing; else ok=false; if(ok)nextTeenK(); else {let m=$id('teenMsg'); if(m)m.textContent='Check the frame and choose the missing number.';} };
+  window.chooseTeenK=function(n){ if(n===teenK.target)nextTeenK(); else {let m=$id('teenMsg'); if(m)m.textContent='Try again.';} };
+  function nextTeenK(){try{addCoin&&addCoin()}catch(e){} teenK.q++; if(teenK.q>=8){try{addGem&&addGem()}catch(e){} completeLevel('teen',teenK.i,`startTeen(${teenK.i})`)}else newTeenK();}
+
+  // Dragon/coin counting: non-overlap and structured skip-counting through 50/100.
+  window.startCount=function(i){ safeBg('home'); window.cntK={i,q:0}; newCountK(); };
+  function cfgCountK(i){const title=levelTitle('count',i,'Count'); if(/5s/i.test(title)) return {max:50,skip:5,structured:true}; if(/10s/i.test(title)) return {max:100,skip:10,structured:true}; if(/2s/i.test(title)) return {max:20,skip:2,structured:true}; if(/1–5|1-5/.test(title)) return {max:5,skip:1,line:true}; if(/1–10|1-10/.test(title)) return {max:10,skip:1,line:true}; if(/1–15|1-15/.test(title)) return {max:15,skip:1,line:false}; if(/1–20|1-20/.test(title)) return {max:20,skip:1,line:false}; return {max:20,skip:1,line:false};}
+  function positionsNonOverlap(n,line){ if(line) return Array.from({length:n},(_,k)=>({x:10+k*(80/Math.max(n-1,1)),y:46})); const pts=[]; const minD=n>15?11:n>10?13:16; let attempts=0; while(pts.length<n && attempts<3000){attempts++;let x=12+Math.random()*76,y=18+Math.random()*58;if(pts.every(p=>Math.hypot(p.x-x,p.y-y)>=minD))pts.push({x,y});} if(pts.length<n){pts.length=0;const cols=Math.ceil(Math.sqrt(n*1.45)),rows=Math.ceil(n/cols);for(let k=0;k<n;k++){let c=k%cols,r=Math.floor(k/cols);pts.push({x:14+(c+.5)*(72/cols),y:18+(r+.5)*(60/rows)});}} return pts; }
+  function groupPositions(n){const cols=Math.min(5,Math.ceil(Math.sqrt(n*1.7))), rows=Math.ceil(n/cols); return Array.from({length:n},(_,k)=>{let c=k%cols,r=Math.floor(k/cols); return {x:12+(c+.5)*(76/cols), y:18+(r+.5)*(58/rows)};});}
+  function coinGroupHTML(skip){ if(skip===1) return '🪙'; const cls=skip===10?'ten':'five'; return `<span class="coinGroupGrid ${cls}">${Array.from({length:skip},()=>'<span class="coinDotK">🪙</span>').join('')}</span>`; }
+  function newCountK(){const c=cfgCountK(cntK.i), vals=[]; for(let n=c.skip;n<=c.max;n+=c.skip) vals.push(n); cntK.target=vals[Math.floor(Math.random()*vals.length)]||c.skip; cntK.hit=0; let groups=Math.max(1,cntK.target/c.skip), pts=c.structured&&c.skip>1?groupPositions(groups):positionsNonOverlap(groups,c.line); cntK.groups=pts.map(p=>({x:p.x,y:p.y,done:false})); renderCountK(); }
+  window.renderCountK=function(){const c=cfgCountK(cntK.i), title=levelTitle('count',cntK.i,'Count'); const done=cntK.hit===cntK.groups.length; const ans=[]; for(let n=c.skip;n<=c.max;n+=c.skip)ans.push(n); layer().innerHTML=topBar('count',`🪙 ${htmlEsc(title)}`,`${cntK.q+1}/8`)+`<div class="qaActivity3"><div class="qaCard3"><div class="qaPrompt3">${done?'How many coins did you count?':`Tap each ${c.skip===1?'coin':'group'} while you count.`}</div><div class="coinAreaK">${cntK.groups.map((g,i)=>`<button class="${c.skip===1?'coinK':'coinGroupK '+(c.skip===10?'ten':'five')} ${g.done?'done':''}" style="left:${g.x}%;top:${g.y}%" onclick="tapCountK(${i})">${g.done?'✅':coinGroupHTML(c.skip)}</button>`).join('')}</div>${done?`<div class="answerBtnsK">${ans.map(n=>`<button onclick="answerCountK(${n})">${n}</button>`).join('')}</div>`:''}<div class="msg" id="cntMsg"></div></div></div>`; };
+  window.tapCountK=function(i){const g=cntK.groups[i]; if(!g||g.done)return; g.done=true; cntK.hit++; safeSpeak(String(cntK.hit*cfgCountK(cntK.i).skip)); renderCountK(); };
+  window.answerCountK=function(n){ if(n===cntK.target){try{addCoin&&addCoin()}catch(e){} cntK.q++; if(cntK.q>=8){try{addGem&&addGem()}catch(e){} completeLevel('count',cntK.i,`startCount(${cntK.i})`)}else newCountK();}else{let m=$id('cntMsg'); if(m)m.textContent='Try again.';} };
+
+  // Make sure the public function names point at these repaired versions.
+  window.renderBakery = renderBakeryK;
+  window.submitBakery = window.submitBakeryK;
+  window.renderTeen = window.renderTeenK;
+  window.renderCount = window.renderCountK;
+  try{ if(typeof updateTop==='function') updateTop(); }catch(e){}
+})();
+/* ===== END KATIE FIX PATCH ===== */
+</script>
+
 </body>
 </html>
