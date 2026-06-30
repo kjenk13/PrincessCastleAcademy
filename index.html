@@ -2066,3 +2066,207 @@ showHome();updateTop();
 
 </body>
 </html>
+
+<script>
+/* ===== Final alligator asset/fit patch ===== */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = `
+    .gatorChoices{display:flex!important;justify-content:center!important;align-items:center!important;gap:clamp(18px,4vw,36px)!important;margin-top:10px!important;flex-wrap:nowrap!important;}
+    .gatorCard{
+      width:clamp(190px,28vw,285px)!important;
+      height:clamp(120px,18vw,160px)!important;
+      min-height:120px!important;
+      padding:12px!important;
+      overflow:hidden!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      background:#fffdf2!important;
+      border:5px solid #9b4de3!important;
+      border-radius:18px!important;
+      box-sizing:border-box!important;
+    }
+    .gatorSymbol{width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:visible!important;}
+    .gatorSymbol img,.gatorSymbol svg{
+      max-width:92%!important;
+      max-height:92%!important;
+      width:auto!important;
+      height:auto!important;
+      object-fit:contain!important;
+      display:block!important;
+      transform:none!important;
+    }
+    .bigGator .gatorSymbol img,.bigGator .gatorSymbol svg{max-width:90%!important;max-height:90%!important;}
+    @media (max-width:700px){
+      .gatorChoices{gap:12px!important;}
+      .gatorCard{width:42vw!important;height:128px!important;padding:10px!important;}
+      .gatorSymbol img,.gatorSymbol svg{max-width:88%!important;max-height:88%!important;}
+    }
+    @media (max-height:560px){
+      .gatorCard{height:112px!important;min-height:112px!important;}
+      .gatorSymbol img,.gatorSymbol svg{max-width:82%!important;max-height:82%!important;}
+      .compareNums{margin:4px 0!important;}
+    }
+  `;
+  document.head.appendChild(css);
+  window.gatorSVG = function(symbol){
+    const file = symbol === '>' ? 'gt_gator.png' : symbol === '<' ? 'lt_gator.png' : 'eq_gator.png';
+    const label = symbol === '>' ? 'greater than alligator' : symbol === '<' ? 'less than alligator' : 'equal alligator';
+    return `<span class="gatorSymbol"><img src="${file}" alt="${label}" draggable="false"></span>`;
+  };
+})();
+</script>
+
+<script>
+/* ===== KATIE FINAL CONSOLIDATED FIX PASS ===== */
+(function(){
+  const $ = id => document.getElementById(id);
+  const layer = () => $('layer');
+  const esc = s => String(s).replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
+  const shuf = a => {a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;};
+  const assetUrl = f => (typeof asset==='function'?asset(f):f);
+  const setBg = k => { try{ if(typeof bg==='function') bg(k); else $('screen').style.backgroundImage=`url(${assetUrl((window.bgs&&window.bgs[k])||k+'.jpg')})`; }catch(e){} };
+  const say = t => { try{ if(typeof speak==='function') speak(t); else {speechSynthesis.cancel(); let u=new SpeechSynthesisUtterance(String(t)); u.rate=.78; speechSynthesis.speak(u);} }catch(e){} };
+  const coin = () => { try{ if(typeof addCoin==='function') addCoin(); }catch(e){} };
+  const gem = () => { try{ if(typeof addGem==='function') addGem(); }catch(e){} };
+  function levelTitle(room,i,fb){return (window.levels&&levels[room]&&levels[room][i]&&levels[room][i][0])||fb||'';}
+  function markComplete(room,i){try{window.state=window.state||{}; state.unlocked=state.unlocked||{}; state.completed=state.completed||{}; state.completed[room]=state.completed[room]||{}; state.completed[room][i]=true; state.unlocked[room]=Math.max(state.unlocked[room]||1,i+2); if(typeof save==='function')save();}catch(e){console.error('markComplete failed',e);}}
+  function doneModal(room,i,replay){gem(); markComplete(room,i); document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>⭐ Great Job! ⭐</h2><div class="prompt">You earned 💎 +1</div><button class="btn" onclick="this.closest('.modal').remove();${replay}">🔁 Play Again</button><button class="btn" onclick="this.closest('.modal').remove();startLevel('${room}',${i+1})">➡️ Next Level</button></div></div>`);}
+  function bar(room,title,progress=''){return `<div class="bar"><button class="btn" onclick="showLevels('${room}')">⬅ Levels</button><div class="barTitle">${title}</div><div class="progressPill">${progress}</div></div>`;}
+  function numLine(max,cb,sel=null,min=0){return `<div class="numLineFixed">${Array.from({length:max-min+1},(_,k)=>k+min).map(n=>`<button class="nlBtn ${Number(sel)===n?'sel hit':''}" onclick="${cb}(${n})">${n}</button>`).join('')}</div>`;}
+  window.levels = window.levels || {};
+  levels.count=[['Line Count 1–10'],['Scattered Count 1–10'],['Scattered Count 1–20'],['Count by 2s'],['Count by 5s'],['Count by 10s'],['Mixed Review']];
+  levels.teen=[['Tens Frames'],['Make a Ten'],['Count Teen Numbers'],['Match Teen Numbers'],['Base-10 Intro'],['Build Base-10'],['Mixed Review']];
+  levels.shape=[['Shape Match'],['Shape Hunt'],['Attributes'],['Mixed Review']];
+
+  const css=document.createElement('style'); css.textContent=`
+    .numLineFixed{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin:8px auto;max-width:760px}.nlBtn{min-width:42px;height:42px;border-radius:50%;border:4px solid #b86bee;background:#fffdf4;box-shadow:0 4px 0 #7c35c8;font-weight:900;color:#40205c}.nlBtn.hit,.nlBtn.sel{background:#ffe56b!important;outline:3px solid #d9b800}
+    .gatorRowFinal{display:flex;justify-content:center;gap:24px;align-items:center;margin-top:8px}.gatorBtnFinal{width:clamp(210px,30vw,330px);height:clamp(132px,19vw,175px);border:5px solid #9b4de3;border-radius:20px;background:#fffdf2;box-shadow:0 7px 0 #7c35c8;display:flex;align-items:center;justify-content:center;padding:16px;overflow:hidden}.gatorBtnFinal img{max-width:68%!important;max-height:78%!important;object-fit:contain!important;display:block!important}.compareNumsFinal{font-size:clamp(2.5rem,6vw,4rem);font-weight:900;display:flex;gap:46px;justify-content:center;align-items:center;margin:6px auto}
+    .countAreaFinal{height:min(48vh,390px);min-height:245px;border:4px solid #fff0a6;border-radius:22px;position:relative;margin:8px auto;max-width:900px;background:rgba(255,255,255,.18);overflow:hidden}.coinSingleFinal,.coinGroupFinal{position:absolute;transform:translate(-50%,-50%);border:0;background:transparent;box-shadow:none;padding:0;display:grid;place-items:center;overflow:visible}.coinSingleFinal{font-size:clamp(1.45rem,3.2vw,2.2rem);width:46px;height:46px}.coinGroupFinal{width:clamp(64px,12vw,104px);height:clamp(48px,9vw,78px)}.coinDotFinal{font-size:clamp(.95rem,1.8vw,1.35rem);line-height:1}.coinSingleFinal .tick,.coinGroupFinal .tick{position:absolute;right:-4px;bottom:-4px;background:#22a447;color:white;border-radius:50%;width:22px;height:22px;font-size:16px;display:grid;place-items:center;border:2px solid white}.pairFinal{display:flex;gap:5px}.fiveFinal{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.tenMiniFinal{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,1fr);gap:3px;padding:5px;border:4px solid #9b4de3;border-radius:12px;background:#fff9ef}.coinGroupFinal.done,.coinSingleFinal.done{filter:drop-shadow(0 0 7px rgba(35,150,90,.9))}.qaCardTightFinal{width:min(92%,820px);padding:12px!important}.lineHintFinal{font-size:clamp(1rem,2vw,1.3rem);font-weight:900;margin-top:4px}
+    .teenFramesFinal{display:flex;gap:22px;justify-content:center;align-items:center;margin:8px auto;flex-wrap:wrap}.teenFrameFinal{display:grid;grid-template-columns:repeat(5,42px);gap:7px;border:5px solid #40205c;border-radius:18px;padding:8px;background:#fff}.teenCellFinal{width:42px;height:42px;border:4px solid #9b4de3;border-radius:12px;background:#fff;box-shadow:none}.teenCellFinal.filled{background:#ffd83d!important}.teenEquationFinal{font-size:clamp(1.5rem,3.5vw,2.3rem);font-weight:900;margin:4px}.teenChoicesFinal{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:8px}.teenChoicePicFinal{min-height:120px;border:5px solid #9b4de3;border-radius:20px;background:#fff9bf;padding:8px;display:grid;place-items:center;box-shadow:0 6px 0 #7c35c8}.baseTenPicFinal{display:flex;align-items:flex-end;gap:10px;justify-content:center}.tenRodFinal{display:grid;grid-template-rows:repeat(10,8px);width:28px;border:3px solid #003342;background:#33c6e8}.tenRodFinal span{border-bottom:1px solid #006980}.cubeWrapFinal{display:grid;grid-template-columns:repeat(5,22px);gap:6px}.cubeFinal{width:22px;height:22px;background:#33c6e8;border:3px solid #003342;border-radius:4px}.introRowFinal{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap}.readBtnFinal{background:#6a5cff!important;color:white!important}
+    .shapeGridFinal{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;max-width:820px;margin:18px auto}.shapeTileFinal{min-height:130px}.shapeTileFinal.done{background:linear-gradient(#ffd6f6,#ffb3e9)!important}.shapeTileFinal.locked{opacity:.55;filter:grayscale(1)}
+    .bakeryAnswerFinal .num.sel{background:#ffe56b!important;outline:5px solid #d9b800}.patternChoiceFinal{font-size:clamp(2rem,5vw,3rem)!important}
+    @media(max-height:620px){.teenFrameFinal{grid-template-columns:repeat(5,34px);gap:5px}.teenCellFinal{width:34px;height:34px}.countAreaFinal{height:230px}.gatorBtnFinal{height:112px}.gatorBtnFinal img{max-width:60%!important;max-height:72%!important}.qaCardTightFinal .prompt,.qaCardTightFinal .qaPrompt3{font-size:1.25rem!important;padding:7px!important;margin:5px!important}}
+  `; document.head.appendChild(css);
+
+  // Ensure level menu works consistently and never rerolls the current question.
+  window.showLevels=function(room){
+    if(room==='shape') return showShapeHub();
+    setBg(room==='bakery'?'bakery':room);
+    const arr=levels[room]||[]; const icon=(window.rooms&&rooms.find(r=>r[0]===room)?.[1])||''; const name=(window.rooms&&rooms.find(r=>r[0]===room)?.[2])||room;
+    layer().innerHTML=`<div class="bar"><button class="btn" onclick="showHome()">🏠 Home</button><div class="barTitle">${icon} ${esc(name)}</div><div></div></div><div class="panel"><div class="levels">${arr.map((l,i)=>{let unlocked=(window.state&&state.unlocked&&state.unlocked[room])||1;let locked=i>=unlocked;let done=!!(window.state&&state.completed&&state.completed[room]&&state.completed[room][i]);return `<button class="levelCard ${locked?'locked':''} ${done?'completedPink':''}" ${locked?'disabled':''} onclick="startLevel('${room}',${i})"><div style="font-size:2rem">${done?'✅':locked?'🔒':icon}</div><b>${room==='bakery'?'Mode':'Level'} ${i+1}</b><div>${esc(l[0])}</div>${locked?'<div class="lockedNote">Locked</div>':''}</button>`}).join('')}</div></div>`;
+  };
+
+  window.startLevel=function(room,i){
+    if(room==='bakery') return startBakery();
+    if(room==='compare') return startCompare(i);
+    if(room==='count') return startCount(i);
+    if(room==='teen') return startTeen(i);
+    if(room==='shape') return showShapeHub();
+    if(room==='pattern') return startPattern(i);
+    try{ if(room==='clock')return startClock(i); if(room==='reading')return startReading(i); if(room==='rhyme')return startRhyme(i); if(room==='word')return startWord(i); if(room==='sound')return startSound(i); if(room==='map')return startMap(i); if(room==='messenger')return startMessenger(i);}catch(e){console.error(e)}
+  };
+
+  // Compare Meadow: bigger buttons + aggressively contained gator art.
+  const cmpRanges=[[1,5],[1,10],[10,15],[1,15],[10,20],[1,20],[1,20]];
+  window.startCompare=function(i){setBg('home');let [lo,hi]=cmpRanges[i]||[1,20],bag=[];for(let a=lo;a<=hi;a++)for(let b=lo;b<=hi;b++)if(a!==b)bag.push({a,b,key:a+'-'+b});window.cmpFinal={i,q:0,qs:shuf(bag).slice(0,8),marked:[]};renderCompare();};
+  window.renderCompare=function(){let q=cmpFinal.qs[cmpFinal.q];let ready=cmpFinal.marked.includes(q.a)&&cmpFinal.marked.includes(q.b);layer().innerHTML=bar('compare',`🐊 ${esc(levelTitle('compare',cmpFinal.i,'Compare Meadow'))}`,`${cmpFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal">${numLine(20,'tapCompareFinal',null,1)}<div class="prompt">${ready?'Which number is larger? The alligator will eat the larger number.':'Tap both numbers on the number line.'}</div><div class="compareNumsFinal"><span>${q.a}</span><span>?</span><span>${q.b}</span></div>${ready?`<div class="gatorRowFinal"><button class="gatorBtnFinal" onclick="chooseCompareFinal('>')"><img src="gt_gator.png" alt="greater than"></button><button class="gatorBtnFinal" onclick="chooseCompareFinal('<')"><img src="lt_gator.png" alt="less than"></button></div>`:''}<div class="msg" id="cmpMsg"></div></div></div>`;cmpFinal.marked.forEach(n=>{let btn=[...document.querySelectorAll('.nlBtn')].find(b=>b.textContent==n); if(btn)btn.classList.add('hit')});};
+  window.tapCompareFinal=function(n){let q=cmpFinal.qs[cmpFinal.q];if((n===q.a||n===q.b)&&!cmpFinal.marked.includes(n))cmpFinal.marked.push(n);renderCompare();};
+  window.chooseCompareFinal=function(sym){let q=cmpFinal.qs[cmpFinal.q],ans=q.a>q.b?'>':'<';if(sym!==ans){$('cmpMsg').textContent='Try again.';return;}coin();cmpFinal.q++;cmpFinal.marked=[];if(cmpFinal.q>=8)doneModal('compare',cmpFinal.i,`startCompare(${cmpFinal.i})`);else renderCompare();};
+
+  // Royal Bakery with visible selected answers and correct Orders Served.
+  const bakChars=[['🐉','dragon'],['🦄','unicorn'],['🐱','cat'],['🧙','wizard'],['🐸','frog prince']], bakFoods=['🍓','🫐','🧁','🍪','🍋','🍒'];
+  window.startBakery=function(){setBg('bakery');window.bakFinal={served:0};newBakeryFinal();};
+  function newBakeryFinal(){let c=shuf(bakChars)[0],a=1+Math.floor(Math.random()*5),b=1+Math.floor(Math.random()*(10-a)),f=shuf(bakFoods)[0],f2=shuf(bakFoods.filter(x=>x!==f))[0];window.bakFinal={...(bakFinal||{}),char:c[0],name:c[1],a,b,food:f,food2:f2,stage:'first',fill:Array(10).fill(''),locked:Array(10).fill(false),selected:null};renderBakeryFinal();}
+  window.renderBakeryFinal=function(){let b=bakFinal,txt=b.stage==='first'?`The ${b.name} wants ${b.a} ${b.food}`:b.stage==='second'?`The ${b.name} wants ${b.b} ${b.food2}`:`How many treats altogether?`;let answer=b.stage==='answer'?`<div class="prompt">${b.a} + ${b.b} = ?</div><div class="nums bakeryAnswerFinal">${Array.from({length:10},(_,k)=>k+1).map(n=>`<button class="num ${Number(b.selected)===n?'sel':''}" onclick="bakFinal.selected=${n};renderBakeryFinal()">${n}</button>`).join('')}</div><button class="btn" onclick="submitBakeryFinal()">✅ Check Answer</button>`:'';layer().innerHTML=bar('bakery','🧁 Royal Bakery',`Orders Served: ${b.served||0}`)+`<div class="activity" style="background-image:url(${assetUrl('bakery.jpg')})"><div class="card"><div class="cust"><span class="char">${b.char}</span><span>${esc(txt)}</span></div><div class="ten">${b.fill.map((x,i)=>`<button class="cell ${x?'filled':''} ${b.locked[i]?'locked':''}" onclick="toggleBakeryFinal(${i})">${x}</button>`).join('')}</div>${answer}${b.stage==='answer'?'':`<button class="btn" onclick="submitBakeryFinal()">Serve Order</button>`}<div class="msg" id="bakMsg"></div></div></div>`;};
+  window.toggleBakeryFinal=function(i){let b=bakFinal;if(!b||b.stage==='answer'||b.locked[i])return;let food=b.stage==='first'?b.food:b.food2;b.fill[i]=b.fill[i]?'':food;renderBakeryFinal();};
+  function bakAll(){return bakFinal.fill.filter(Boolean).length} function bakUnlocked(){return bakFinal.fill.filter((v,i)=>v&&!bakFinal.locked[i]).length}
+  window.submitBakeryFinal=function(){let b=bakFinal,msg=$('bakMsg');if(b.stage==='first'){if(bakAll()===b.a){b.locked=b.fill.map(Boolean);b.stage='second';renderBakeryFinal();}else if(msg)msg.textContent=`Count ${b.a}, then serve.`;return;}if(b.stage==='second'){if(bakUnlocked()===b.b&&bakAll()===b.a+b.b){b.stage='answer';renderBakeryFinal();}else if(msg)msg.textContent=`Add ${b.b} more, then serve.`;return;}if(Number(b.selected)===b.a+b.b){coin();b.served=(b.served||0)+1;document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="card"><h2>🎉 Great job!</h2><div class="prompt">${b.a}+${b.b}=${b.a+b.b}</div><button class="btn" onclick="this.closest('.modal').remove();newBakeryFinal()">Next Order</button></div></div>`);}else if(msg)msg.textContent='Choose the total.';};
+
+  // Teen Builder / Tens Frames - distinct levels, stable number lines, no labels above frames.
+  function frameHTML(filled,clickable=true,offset=0){return `<div class="teenFrameFinal">${Array.from({length:10},(_,i)=>{let idx=offset+i,fill=filled.has?filled.has(idx):i<filled;return `<button class="teenCellFinal ${fill?'filled':''}" ${clickable?`onclick="toggleTeenFinal(${idx})"`:'disabled'}>${fill?'':''}</button>`}).join('')}</div>`;}
+  function baseTenPic(n){return `<div class="baseTenPicFinal"><div class="tenRodFinal">${Array.from({length:10},()=>'<span></span>').join('')}</div><div class="cubeWrapFinal">${Array.from({length:n%10},()=>'<div class="cubeFinal"></div>').join('')}</div></div>`;}
+  function teenTargets(){return shuf(Array.from({length:9},(_,k)=>k+11));}
+  window.startTeen=function(i){setBg('home');window.teenFinal={i,q:0,bag:teenTargets()};newTeenFinal();};
+  function newTeenFinal(){let t=teenFinal.bag.pop(); if(!t){teenFinal.bag=teenTargets();t=teenFinal.bag.pop()} Object.assign(teenFinal,{target:t,selected:null,filled:new Set(),tenFilled:false}); if(teenFinal.i===1){teenFinal.base=3+Math.floor(Math.random()*6);teenFinal.target=10;teenFinal.missing=10-teenFinal.base;teenFinal.filled=new Set(Array.from({length:teenFinal.base},(_,k)=>k));} else teenFinal.missing=t-10; renderTeenFinal();}
+  window.renderTeenFinal=function(){let i=teenFinal.i,t=teenFinal.target,title=levelTitle('teen',i,'Teen Builder');
+    if(i===0||i===5){let left=teenFinal.tenFilled?10:0;let rightSet=new Set([...teenFinal.filled].filter(x=>x>=10));layer().innerHTML=bar('teen',`🔟 ${esc(title)}`,`${teenFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="prompt">Build ${t}</div><div class="teenEquationFinal">10 + ${teenFinal.selected===null?'□':teenFinal.selected} = ${t}</div><div class="teenFramesFinal">${frameHTML(left,false,0)}${frameHTML(rightSet,true,10)}</div>${numLine(9,'selectTeenFinal',teenFinal.selected,0)}<button class="btn" onclick="teenFinal.tenFilled=true;renderTeenFinal()">✨ Fill the Ten</button> <button class="btn" onclick="checkTeenFinal()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;return;}
+    if(i===1){let set=teenFinal.filled;layer().innerHTML=bar('teen',`🔟 ${esc(title)}`,`${teenFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="prompt">Fill the frame to make 10.</div><div class="teenEquationFinal">${teenFinal.base} + ${teenFinal.selected===null?'□':teenFinal.selected} = 10</div>${frameHTML(set,true,0)}${numLine(10,'selectTeenFinal',teenFinal.selected,0)}<button class="btn" onclick="checkTeenFinal()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;return;}
+    if(i===2){layer().innerHTML=bar('teen',`🔟 ${esc(title)}`,`${teenFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><button class="btn readBtnFinal" onclick="say('Which number does this picture show?')">🔊 Read</button><div class="prompt">Which number does this picture show?</div>${baseTenPic(t)}${numLine(20,'selectTeenFinal',teenFinal.selected,11)}<button class="btn" onclick="checkTeenFinal()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;return;}
+    if(i===3){let opts=shuf([t,...shuf(Array.from({length:9},(_,k)=>k+11).filter(n=>n!==t)).slice(0,2)]);layer().innerHTML=bar('teen',`🔟 ${esc(title)}`,`${teenFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><button class="btn readBtnFinal" onclick="say('Which picture shows ${t}?')">🔊 Read</button><div class="prompt">Which picture shows ${t}?</div><div class="teenChoicesFinal">${opts.map(n=>`<button class="teenChoicePicFinal" onclick="chooseTeenPicFinal(${n})">${baseTenPic(n)}</button>`).join('')}</div><div class="msg" id="teenMsg"></div></div></div>`;return;}
+    if(i===4){let type=shuf(['tens','ones','total'])[0], ans=type==='tens'?1:type==='ones'?t-10:t;teenFinal.introAns=ans;let prompt=type==='tens'?'How many tens?':type==='ones'?'How many ones?':'How many altogether?';layer().innerHTML=bar('teen',`🔟 ${esc(title)}`,`${teenFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><button class="btn readBtnFinal" onclick="say('${prompt}')">🔊 Read</button><div class="prompt">${prompt}</div><div class="introRowFinal">${baseTenPic(t)}</div>${numLine(20,'selectTeenFinal',teenFinal.selected,0)}<button class="btn" onclick="checkTeenFinal()">✅ Check</button><div class="msg" id="teenMsg"></div></div></div>`;return;}
+    // Mixed review alternates count/match/build.
+    teenFinal.i=teenFinal.q%6; renderTeenFinal();
+  };
+  window.toggleTeenFinal=function(idx){if(teenFinal.i===0||teenFinal.i===5){if(idx<10)return; let ones=[...teenFinal.filled].filter(x=>x>=10).length; if(teenFinal.filled.has(idx))teenFinal.filled.delete(idx); else if(ones<10)teenFinal.filled.add(idx);}else if(teenFinal.i===1){if(idx<teenFinal.base)return; teenFinal.filled.has(idx)?teenFinal.filled.delete(idx):teenFinal.filled.add(idx);}renderTeenFinal();};
+  window.selectTeenFinal=function(n){teenFinal.selected=n;renderTeenFinal();};
+  window.checkTeenFinal=function(){let i=teenFinal.i, ok=false;if(i===0||i===5)ok=teenFinal.tenFilled&&[...teenFinal.filled].filter(x=>x>=10).length===teenFinal.missing&&teenFinal.selected===teenFinal.missing;else if(i===1)ok=teenFinal.filled.size===10&&teenFinal.selected===teenFinal.missing;else if(i===2)ok=teenFinal.selected===teenFinal.target;else if(i===4)ok=teenFinal.selected===teenFinal.introAns;if(ok){nextTeenFinal()}else{$('teenMsg').textContent='Try again.'}};
+  window.chooseTeenPicFinal=function(n){if(n===teenFinal.target)nextTeenFinal();else $('teenMsg').textContent='Try again.';};
+  function nextTeenFinal(){coin();teenFinal.q++;if(teenFinal.q>=8)doneModal('teen',teenFinal.i,`startTeen(${teenFinal.i})`);else newTeenFinal();}
+
+  // Dragon Count - line/scatter/grouped layouts, visible ✓ on top of coins, number line answers.
+  function countCfg(i){let title=levelTitle('count',i,'Count'); if(/10s/i.test(title))return{max:100,skip:10,mode:'ten'}; if(/5s/i.test(title))return{max:50,skip:5,mode:'five'}; if(/2s/i.test(title))return{max:20,skip:2,mode:'pair'}; if(/Line/i.test(title))return{max:10,skip:1,mode:'line'}; if(/20/.test(title))return{max:20,skip:1,mode:'scatter'}; return{max:10,skip:1,mode:'scatter'};}
+  function nonOverlap(n){let pts=[],tries=0,min=n>15?11:15;while(pts.length<n&&tries++<4000){let x=10+Math.random()*80,y=18+Math.random()*58;if(pts.every(p=>Math.hypot(p.x-x,p.y-y)>min))pts.push({x,y});}if(pts.length<n){for(let k=pts.length;k<n;k++)pts.push({x:12+(k%5)*18,y:20+Math.floor(k/5)*20});}return pts;}
+  function grid(n){let cols=5,rows=Math.ceil(n/cols);return Array.from({length:n},(_,k)=>({x:11+(k%cols+.5)*(78/cols),y:24+(Math.floor(k/cols)+.5)*(48/rows)}));}
+  function countInner(mode){if(mode==='pair')return `<span class="pairFinal"><span class="coinDotFinal">🪙</span><span class="coinDotFinal">🪙</span></span>`;if(mode==='five')return `<span class="fiveFinal"><span class="coinDotFinal">🪙</span><span class="coinDotFinal">🪙</span><span class="coinDotFinal">🪙</span><span></span><span class="coinDotFinal">🪙</span><span class="coinDotFinal">🪙</span></span>`;if(mode==='ten')return `<span class="tenMiniFinal">${Array.from({length:10},()=>'<span class="coinDotFinal">🪙</span>').join('')}</span>`;return '🪙';}
+  window.startCount=function(i){setBg('home');let c=countCfg(i),targets=[];for(let n=c.skip;n<=c.max;n+=c.skip)targets.push(n);window.countFinal={i,q:0,bag:shuf(targets)};newCountFinal();};
+  function newCountFinal(){let c=countCfg(countFinal.i);if(!countFinal.bag.length){let arr=[];for(let n=c.skip;n<=c.max;n+=c.skip)arr.push(n);countFinal.bag=shuf(arr)}countFinal.target=countFinal.bag.pop();let groups=countFinal.target/c.skip;let pts=c.mode==='line'?Array.from({length:groups},(_,k)=>({x:10+k*(80/Math.max(groups-1,1)),y:48})):c.mode==='scatter'?nonOverlap(groups):grid(groups);countFinal.groups=pts.map(p=>({...p,done:false}));countFinal.hit=0;renderCountFinal();}
+  window.renderCountFinal=function(){let c=countCfg(countFinal.i),done=countFinal.hit>=countFinal.groups.length;layer().innerHTML=bar('count',`🪙 ${esc(levelTitle('count',countFinal.i,'Count'))}`,`${countFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="prompt">${done?'How many did you count?':`Tap each ${c.skip===1?'coin':'group'} while you count.`}</div><div class="countAreaFinal">${countFinal.groups.map((g,i)=>`<button class="${c.mode==='scatter'||c.mode==='line'?'coinSingleFinal':'coinGroupFinal'} ${g.done?'done':''}" style="left:${g.x}%;top:${g.y}%" onclick="tapCountFinal(${i})">${countInner(c.mode)}${g.done?'<span class="tick">✓</span>':''}</button>`).join('')}</div>${done?numLine(c.max,'answerCountFinal',null,0):''}<div class="msg" id="cntMsg"></div></div></div>`;};
+  window.tapCountFinal=function(i){let g=countFinal.groups[i];if(!g||g.done)return;g.done=true;countFinal.hit++;say(String(countFinal.hit*countCfg(countFinal.i).skip));renderCountFinal();};
+  window.answerCountFinal=function(n){if(n===countFinal.target){coin();countFinal.q++;if(countFinal.q>=8)doneModal('count',countFinal.i,`startCount(${countFinal.i})`);else newCountFinal();}else $('cntMsg').textContent='Try again.';};
+
+  // Pattern Garden - choices must include pattern items and no duplicates.
+  const pItems=['💎','🌻','🍄','🌷','🦋','🐞','🌼','🍎','🍌','🍇','⭐','🌙'];
+  window.startPattern=function(i){setBg('pattern');let types=['AB','ABB','AAB','ABC'],type=(levels.pattern&&levels.pattern[i]&&levels.pattern[i][1])||types[i%4]||'AB';if(/mixed/i.test(levelTitle('pattern',i,'')))type='MIX';let qs=[];for(let k=0;k<20;k++){let A=pItems[(k*2)%pItems.length],B=pItems[(k*2+1)%pItems.length],C=pItems[(k*2+2)%pItems.length],t=type==='MIX'?types[k%4]:type,unit=t==='AB'?[A,B]:t==='ABB'?[A,B,B]:t==='AAB'?[A,A,B]:[A,B,C],seq=[];while(seq.length<7)seq.push(...unit);seq=seq.slice(0,7);let ans=seq[6],patternObjs=[...new Set(unit)],choices=[...patternObjs];for(let d of shuf(pItems))if(!choices.includes(d)&&choices.length<4)choices.push(d);qs.push({seq:seq.slice(0,6),ans,choices:shuf(choices),key:t+seq.join('')});}window.patternFinal={i,q:0,qs:shuf(qs).slice(0,8)};renderPatternFinal();};
+  window.renderPatternFinal=function(){let q=patternFinal.qs[patternFinal.q];layer().innerHTML=bar('pattern',`🌷 ${esc(levelTitle('pattern',patternFinal.i,'Patterns'))}`,`${patternFinal.q+1}/8`)+`<div class="activity" style="background-image:url(${assetUrl('pattern.jpg')})"><div class="card qaCardTightFinal"><div class="prompt">Fix the flower bed.</div><div class="patternLine">${q.seq.map(x=>`<span>${x}</span>`).join('')}<span class="blank">?</span></div><div class="choices">${q.choices.map(c=>`<button class="choice patternChoiceFinal" onclick="choosePatternFinal('${c}')">${c}</button>`).join('')}</div><div class="msg" id="patMsg"></div></div></div>`;};
+  window.choosePatternFinal=function(c){let q=patternFinal.qs[patternFinal.q];if(c===q.ans){coin();patternFinal.q++;if(patternFinal.q>=8)doneModal('pattern',patternFinal.i,`startPattern(${patternFinal.i})`);else renderPatternFinal();}else $('patMsg').textContent='Try again.';};
+
+  // Shape Castle - no false defaults, sequential unlock, fixed Shape Hunt.
+  const shapes=['circle','square','triangle','rectangle','pentagon','rhombus','hexagon','trapezoid','oval'];
+  const sIcon={circle:'⭕',square:'◻️',triangle:'🔺',rectangle:'▭',pentagon:'⬟',rhombus:'◆',hexagon:'⬡',trapezoid:'⏢',oval:'🥚'};
+  function shapeUnlocked(){return Number(localStorage.getItem('pcaShapeUnlockedV2')||1);}
+  function setShapeUnlocked(n){localStorage.setItem('pcaShapeUnlockedV2', String(Math.max(shapeUnlocked(), n)));}
+  window.showShapeHub=function(){setBg('home');let u=shapeUnlocked();let tiles=[['Shape Match','✅',0],['Shape Hunt','🔎',1],['Attributes','❓',2],['Mixed Review','⭐',3]];layer().innerHTML=`<div class="bar"><button class="btn" onclick="if(window.showWing)showWing('math');else showHome()">⬅ Math</button><div class="barTitle">🔷 Shape Castle</div><div></div></div><div class="panel"><div class="shapeGridFinal">${tiles.map(([name,ic,idx])=>`<button class="btn shapeTileFinal ${idx<u-1?'done':''} ${idx>=u?'locked':''}" ${idx>=u?'disabled':''} onclick="${idx===0?'startShapeMatchFinal(0)':idx===1?'startShapeHuntFinal(0)':idx===2?'startShapeAttrFinal(0)':'startShapeMixedFinal()'}"><span style="font-size:2.2rem">${idx>=u?'🔒':ic}</span><br>${name}</button>`).join('')}</div></div>`;};
+  window.startShapeMatchFinal=function(q=0){let pool=shuf(shapes).slice(0,8);window.shapeFinal={mode:'match',q,qs:pool.map(s=>({target:s}))};renderShapeMatchFinal();};
+  function renderShapeMatchFinal(){let q=shapeFinal.qs[shapeFinal.q],opts=shuf([q.target,...shuf(shapes.filter(x=>x!==q.target)).slice(0,2)]);layer().innerHTML=bar('shape','🔷 Shape Match',`${shapeFinal.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="wordClue">${sIcon[q.target]}</div><div class="prompt">What shape is this?</div><div class="choices">${opts.map(o=>`<button class="choice" onclick="chooseShapeMatchFinal('${o}')">${o}</button>`).join('')}</div><div class="msg" id="shapeMsg"></div></div></div>`;}
+  window.chooseShapeMatchFinal=function(o){let q=shapeFinal.qs[shapeFinal.q];if(o===q.target){coin();shapeFinal.q++;if(shapeFinal.q>=8){setShapeUnlocked(2);doneModal('shape',0,'showShapeHub()')}else renderShapeMatchFinal();}else $('shapeMsg').textContent='Try again.';};
+  window.startShapeHuntFinal=function(q=0){let qs=shuf(shapes.slice(0,6)).slice(0,8);while(qs.length<8)qs.push(...shuf(shapes.slice(0,6)));window.shapeHunt={q:0,qs:qs.slice(0,8)};renderShapeHuntFinal();};
+  function renderShapeHuntFinal(){let target=shapeHunt.qs[shapeHunt.q],items=shuf([target,target,...shapes.filter(s=>s!==target).slice(0,6)]),need=items.filter(x=>x===target).length;shapeHunt.selected=new Set();shapeHunt.need=need;shapeHunt.items=items;layer().innerHTML=bar('shape','🔎 Shape Hunt',`${shapeHunt.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="prompt">Find the ${target}s.</div><div class="shapeHuntGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:10px auto;max-width:650px">${items.map((s,i)=>`<button class="choice" onclick="toggleShapeHuntFinal(${i})" id="hunt${i}"><span style="font-size:3rem">${sIcon[s]}</span></button>`).join('')}</div><div class="lineHintFinal" id="huntFound">Found 0 of ${need}</div><button class="btn" onclick="checkShapeHuntFinal()">✅ Check</button><div class="msg" id="shapeMsg"></div></div></div>`;}
+  window.toggleShapeHuntFinal=function(i){if(shapeHunt.selected.has(i))shapeHunt.selected.delete(i);else shapeHunt.selected.add(i);let b=$('hunt'+i);if(b)b.classList.toggle('sel');$('huntFound').textContent=`Found ${shapeHunt.selected.size} of ${shapeHunt.need}`;};
+  window.checkShapeHuntFinal=function(){let ok=[...shapeHunt.selected].every(i=>shapeHunt.items[i]===shapeHunt.qs[shapeHunt.q])&&shapeHunt.selected.size===shapeHunt.need;if(ok){coin();shapeHunt.q++;if(shapeHunt.q>=8){setShapeUnlocked(3);doneModal('shape',1,'showShapeHub()')}else renderShapeHuntFinal();}else $('shapeMsg').textContent='Try again.';};
+  window.startShapeAttrFinal=function(q=0){window.shapeAttr={q:0,qs:shuf(shapes).slice(0,8)};renderShapeAttrFinal();};
+  function renderShapeAttrFinal(){let s=shapeAttr.qs[shapeAttr.q],opts=s==='circle'?['has no corners','has 4 sides','has 3 sides']:s==='triangle'?['has 3 sides','has no corners','has 4 equal sides']:['has corners','is a ball','has no sides'];layer().innerHTML=bar('shape','❓ Attributes',`${shapeAttr.q+1}/8`)+`<div class="activity"><div class="card qaCardTightFinal"><div class="wordClue">${sIcon[s]}</div><div class="prompt">Which is true?</div><div class="choices">${opts.map((o,idx)=>`<button class="choice" onclick="chooseShapeAttrFinal(${idx===0})">${o}</button>`).join('')}</div><div class="msg" id="shapeMsg"></div></div></div>`;}
+  window.chooseShapeAttrFinal=function(ok){if(ok){coin();shapeAttr.q++;if(shapeAttr.q>=8){setShapeUnlocked(4);doneModal('shape',2,'showShapeHub()')}else renderShapeAttrFinal();}else $('shapeMsg').textContent='Try again.';};
+  window.startShapeMixedFinal=function(){startShapeMatchFinal(0)};
+})();
+/* ===== END KATIE FINAL CONSOLIDATED FIX PASS ===== */
+</script>
+
+
+<script>
+/* Teen Builder completion/unlock safety patch */
+(function(){
+  function persistDone(room,i){
+    try{
+      window.state=window.state||{}; state.unlocked=state.unlocked||{}; state.completed=state.completed||{};
+      state.completed[room]=state.completed[room]||{}; state.completed[room][i]=true;
+      state.unlocked[room]=Math.max(Number(state.unlocked[room]||1), Number(i)+2);
+      if(typeof save==='function') save(); else localStorage.setItem('pcaPerfectV1', JSON.stringify(state));
+    }catch(e){ console.error('persistDone failed', e); }
+  }
+  window.forceMarkLevelComplete=persistDone;
+  const oldShowLevels=window.showLevels;
+  window.showLevels=function(room){
+    if(typeof oldShowLevels==='function') oldShowLevels(room);
+    try{
+      document.querySelectorAll('.levelCard').forEach((btn,idx)=>{
+        const done=!!(state.completed&&state.completed[room]&&state.completed[room][idx]);
+        const unlocked=Number((state.unlocked&&state.unlocked[room])||1);
+        if(done){btn.classList.add('completedPink'); const icon=btn.querySelector('div'); if(icon)icon.textContent='✅';}
+        if(idx<unlocked){btn.classList.remove('locked'); btn.disabled=false;}
+      });
+    }catch(e){}
+  };
+})();
+</script>
